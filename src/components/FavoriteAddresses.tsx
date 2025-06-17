@@ -109,17 +109,18 @@ const FavoriteAddresses = () => {
               />
             </div>
 
-            <div>
-              <Label htmlFor="addressCode">代碼（選填）</Label>
+            <div className="border-t pt-4">
+              <Label htmlFor="addressCode" className="text-emerald-700">代碼</Label>
+              <p className="text-xs text-gray-500 mb-2">選填：包廂號碼、房間號碼等</p>
               <Input
                 id="addressCode"
-                placeholder="例如：包廂號碼、房間號碼"
+                placeholder="例如：A101、VIP包廂、201房"
                 value={newCode}
                 onChange={(e) => setNewCode(e.target.value)}
               />
             </div>
 
-            <div className="flex space-x-2">
+            <div className="flex space-x-2 pt-4">
               <Button onClick={handleAddAddress} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
                 確認新增
               </Button>
@@ -152,11 +153,14 @@ const FavoriteAddresses = () => {
                     <Icon className="h-5 w-5 text-emerald-600 mt-1 mr-3 flex-shrink-0" />
                     <div className="flex-1">
                       <h3 className="font-medium text-gray-900 mb-1">{address.name}</h3>
-                      <p className="text-sm text-gray-600 mb-1">{address.address}</p>
+                      <p className="text-sm text-gray-600 mb-2">{address.address}</p>
                       {address.code && (
-                        <div className="flex items-center">
-                          <Hash className="h-3 w-3 text-gray-400 mr-1" />
-                          <p className="text-xs text-gray-500">{address.code}</p>
+                        <div className="bg-emerald-50 border border-emerald-200 rounded-md p-2">
+                          <div className="flex items-center">
+                            <Hash className="h-3 w-3 text-emerald-600 mr-1" />
+                            <span className="text-xs font-medium text-emerald-700">代碼：</span>
+                            <span className="text-xs text-emerald-600 ml-1">{address.code}</span>
+                          </div>
                         </div>
                       )}
                     </div>
