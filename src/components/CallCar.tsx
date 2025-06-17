@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,6 +6,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Car, Clock, Hash } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -193,16 +195,18 @@ const CallCar = () => {
                 <Hash className="h-4 w-4 inline mr-1" />
                 代碼
               </Label>
-              <RadioGroup value={selectedCode} onValueChange={setSelectedCode} className="space-y-2">
-                {favoriteCodes.map((code) => (
-                  <div key={code.id} className="flex items-center space-x-2">
-                    <RadioGroupItem value={code.id} id={code.id} />
-                    <Label htmlFor={code.id} className="text-sm cursor-pointer">
+              <Select value={selectedCode} onValueChange={setSelectedCode}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="請選擇代碼" />
+                </SelectTrigger>
+                <SelectContent>
+                  {favoriteCodes.map((code) => (
+                    <SelectItem key={code.id} value={code.id}>
                       {code.label}
-                    </Label>
-                  </div>
-                ))}
-              </RadioGroup>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 
@@ -213,24 +217,25 @@ const CallCar = () => {
                 <Label className="text-sm font-medium text-gray-700 mb-2 block">
                   選擇地址
                 </Label>
-                <RadioGroup 
+                <Select 
                   value={selectedAddressName} 
                   onValueChange={(value) => {
                     setSelectedAddressName(value);
                     const address = favoriteAddresses.find(addr => addr.name === value);
                     setSelectedAddress(address?.address || "");
-                  }} 
-                  className="space-y-2"
+                  }}
                 >
-                  {favoriteAddresses.map((address) => (
-                    <div key={address.id} className="flex items-center space-x-2">
-                      <RadioGroupItem value={address.name} id={address.name} />
-                      <Label htmlFor={address.name} className="text-sm cursor-pointer">
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="請選擇地址" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {favoriteAddresses.map((address) => (
+                      <SelectItem key={address.id} value={address.name}>
                         {address.name}
-                      </Label>
-                    </div>
-                  ))}
-                </RadioGroup>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {selectedAddress && (
