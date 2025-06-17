@@ -50,12 +50,12 @@ const CallCar = () => {
             <Label className="text-sm font-medium text-gray-700 mb-3 block">
               車型選擇
             </Label>
-            <RadioGroup value={carType} onValueChange={setCarType} className="grid grid-cols-2 gap-2">
+            <RadioGroup value={carType} onValueChange={setCarType} className="space-y-2">
               {carTypes.map((type) => (
                 <div key={type.id} className="flex items-center space-x-2">
                   <RadioGroupItem value={type.id} id={type.id} />
                   <Label htmlFor={type.id} className="text-sm cursor-pointer">
-                    {type.isDefault ? `●${type.label}(預設)` : `○${type.label}`}
+                    {type.isDefault ? `●${type.label}` : `○${type.label}`}
                   </Label>
                 </div>
               ))}
