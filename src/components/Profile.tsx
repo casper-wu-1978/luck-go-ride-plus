@@ -9,7 +9,6 @@ import { Switch } from "@/components/ui/switch";
 import { User, Phone, Mail, Bell, Shield, LogOut, Edit, Building, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLiff } from "@/contexts/LiffContext";
-import { closeLiff } from "@/lib/liff";
 import { supabase } from "@/integrations/supabase/client";
 
 interface UserProfile {
@@ -39,15 +38,16 @@ const Profile = () => {
 
   // 檢查用戶登入狀態
   useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    // 立即檢查當前會話
     const checkUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
     };
     checkUser();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-    });
 
     return () => subscription.unsubscribe();
   }, []);
@@ -189,8 +189,21 @@ const Profile = () => {
     setIsEditing(false);
   };
 
-  const handleLogout = () => {
-    closeLiff();
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast({
+        title: "登出成功",
+        description: "已安全登出",
+      });
+    } catch (error) {
+      console.error('登出錯誤:', error);
+      toast({
+        title: "登出失敗",
+        description: "請稍後再試",
+        variant: "destructive",
+      });
+    }
   };
 
   if (liffLoading || isLoading) {
@@ -204,7 +217,7 @@ const Profile = () => {
     );
   }
 
-  const displayName = profile.name || liffProfile?.displayName || "用戶";
+  const displayName = profile.name || liffProfile?.displayName || user?.email || "用戶";
   const avatarUrl = liffProfile?.pictureUrl;
 
   return (
@@ -219,9 +232,9 @@ const Profile = () => {
             </AvatarFallback>
           </Avatar>
           <h2 className="text-xl font-bold mb-1">{displayName}</h2>
-          <p className="opacity-90">LINE 用戶</p>
-          {liffProfile?.userId && (
-            <p className="text-sm opacity-75 mt-1">ID: {liffProfile.userId.slice(-8)}</p>
+          <p className="opacity-90">Luck Go 用戶</p>
+          {user?.id && (
+            <p className="text-sm opacity-75 mt-1">ID: {user.id.slice(-8)}</p>
           )}
         </CardContent>
       </Card>
@@ -328,7 +341,7 @@ const Profile = () => {
                 <Mail className="h-4 w-4 text-gray-500 mr-3" />
                 <div>
                   <p className="text-sm text-gray-500">電子郵件</p>
-                  <p className="font-medium">{profile.email || "未設定"}</p>
+                  <p className="font-medium">{profile.email || user?.email || "未設定"}</p>
                 </div>
               </div>
 
@@ -377,14 +390,14 @@ const Profile = () => {
         </CardContent>
       </Card>
 
-      {/* Close LIFF */}
+      {/* Logout */}
       <Button 
         variant="outline" 
         className="w-full text-red-600 border-red-200 hover:bg-red-50"
         onClick={handleLogout}
       >
         <LogOut className="h-4 w-4 mr-2" />
-        關閉應用
+        登出
       </Button>
     </div>
   );
