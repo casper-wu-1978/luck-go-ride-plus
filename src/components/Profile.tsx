@@ -69,7 +69,7 @@ const Profile = () => {
         const userProfile: UserProfile = {
           id: data.id,
           line_user_id: data.line_user_id || liffProfile.userId,
-          name: data.name || liffProfile.displayName,
+          name: data.name || liffProfile.displayName || "",
           phone: data.phone || "",
           email: data.email || "",
           business_name: data.business_name || "",
@@ -81,7 +81,7 @@ const Profile = () => {
         // 如果資料庫中沒有資料，使用 LIFF 資料初始化
         const userProfile: UserProfile = {
           line_user_id: liffProfile.userId,
-          name: liffProfile.displayName,
+          name: liffProfile.displayName || "",
           phone: "",
           email: "",
           business_name: "",
@@ -138,6 +138,7 @@ const Profile = () => {
         email: editProfile.email.trim(),
         business_name: editProfile.business_name.trim(),
         business_address: editProfile.business_address.trim(),
+        user_id: null, // 明確設置為 null，因為我們使用 line_user_id
       };
 
       console.log('Formatted profile data:', profileData);
@@ -186,7 +187,7 @@ const Profile = () => {
       const updatedProfile: UserProfile = {
         id: result.data.id,
         line_user_id: result.data.line_user_id || liffProfile.userId,
-        name: result.data.name,
+        name: result.data.name || "",
         phone: result.data.phone || "",
         email: result.data.email || "",
         business_name: result.data.business_name || "",
