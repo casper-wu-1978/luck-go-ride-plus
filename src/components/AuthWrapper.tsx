@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useLiff } from '@/contexts/LiffContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useLocation } from 'react-router-dom';
+import { isDevMode } from '@/lib/liff';
 import AuthPage from './AuthPage';
 
 interface AuthWrapperProps {
@@ -15,19 +16,14 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
   const location = useLocation();
   const [showDevInfo, setShowDevInfo] = useState(false);
 
-  // 檢測是否為開發環境
-  const isDevelopment = import.meta.env.DEV || 
-    window.location.hostname === 'localhost' || 
-    window.location.hostname.includes('lovableproject.com') ||
-    window.location.hostname.includes('lovable.app');
+  // 檢測當前環境
+  const isDevelopment = isDevMode();
 
   // 檢查是否在管理員頁面
   const isAdminRoute = location.pathname.startsWith('/admin');
 
   useEffect(() => {
-    if (isDevelopment) {
-      setShowDevInfo(true);
-    }
+    setShowDevInfo(isDevelopment);
   }, [isDevelopment]);
 
   // 如果是管理員路由，使用 email 認證
@@ -43,7 +39,9 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
           <p className="text-emerald-800 text-lg">載入中...</p>
           {showDevInfo && (
-            <p className="text-sm text-emerald-600 mt-2">開發模式：正在初始化...</p>
+            <p className="text-sm text-emerald-600 mt-2">
+              {isDevelopment ? '開發模式：正在初始化...' : '正式模式：連接 LINE 服務中...'}
+            </p>
           )}
         </div>
       </div>
@@ -63,7 +61,7 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                   <p className="text-blue-800 font-medium mb-2">🛠️ 開發模式</p>
                   <p className="text-blue-700 text-sm">
-                    此應用程式目前在開發模式運行。在正式環境中，請在 LINE 應用程式中開啟此服務。
+                    此應用程式目前在開發模式運行。在手機中使用時會自動切換到正式模式。
                   </p>
                 </div>
                 <button 
@@ -75,6 +73,12 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
               </>
             ) : (
               <>
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                  <p className="text-green-800 font-medium mb-2">📱 正式模式</p>
+                  <p className="text-green-700 text-sm">
+                    正在連接 LINE 服務，請稍候...
+                  </p>
+                </div>
                 <p className="text-gray-800 mb-4">請在 LINE 應用程式中開啟此服務</p>
                 <p className="text-sm text-gray-600 mb-4">
                   此應用程式需要透過 LINE 登入才能使用
@@ -84,7 +88,7 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
                     💡 如果遇到連線問題，請嘗試：<br/>
                     1. 確認網路連線正常<br/>
                     2. 重新啟動 LINE 應用程式<br/>
-                    3. 在外部瀏覽器中開啟
+                    3. 確認在 LINE 中開啟此連結
                   </p>
                 </div>
               </>
