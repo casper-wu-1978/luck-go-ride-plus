@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useLiff } from "@/contexts/LiffContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +26,9 @@ const DriverOrders = () => {
   const [isOnline, setIsOnline] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<string>("");
   const [isGettingLocation, setIsGettingLocation] = useState(false);
+
+  // Your Mapbox API key
+  const MAPBOX_TOKEN = "pk.eyJ1IjoiY2FzcGVyNjciLCJhIjoiY205Y2FoMDIyMHNpYjJ5b2V5dGE2MmJnbyJ9.yzckI6SXN3-Fl_5-llEYzQ";
 
   useEffect(() => {
     loadOrders();
@@ -77,15 +79,15 @@ const DriverOrders = () => {
 
       const { latitude, longitude } = position.coords;
       
-      // 使用反向地理編碼獲取地址
+      // 使用 Mapbox 反向地理編碼獲取地址
       const response = await fetch(
-        `https://api.opencagedata.com/geocode/v1/json?q=${latitude}+${longitude}&key=YOUR_API_KEY&language=zh-tw`
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${MAPBOX_TOKEN}&language=zh-TW`
       );
       
       if (response.ok) {
         const data = await response.json();
-        if (data.results && data.results.length > 0) {
-          setCurrentLocation(data.results[0].formatted);
+        if (data.features && data.features.length > 0) {
+          setCurrentLocation(data.features[0].place_name);
         } else {
           setCurrentLocation(`緯度: ${latitude.toFixed(6)}, 經度: ${longitude.toFixed(6)}`);
         }
