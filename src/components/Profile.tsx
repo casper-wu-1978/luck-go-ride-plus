@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface UserProfile {
   id?: string;
+  line_user_id?: string;
   name: string;
   phone: string;
   email: string;
@@ -44,12 +45,12 @@ const Profile = () => {
     }
 
     try {
-      console.log('Loading profile for user:', liffProfile.userId);
+      console.log('Loading profile for LINE user:', liffProfile.userId);
       
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('user_id', liffProfile.userId)
+        .eq('line_user_id', liffProfile.userId)
         .maybeSingle();
 
       if (error) {
@@ -67,6 +68,7 @@ const Profile = () => {
       if (data) {
         const userProfile: UserProfile = {
           id: data.id,
+          line_user_id: data.line_user_id,
           name: data.name || liffProfile.displayName,
           phone: data.phone || "",
           email: data.email || "",
@@ -78,6 +80,7 @@ const Profile = () => {
       } else {
         // 如果資料庫中沒有資料，使用 LIFF 資料初始化
         const userProfile: UserProfile = {
+          line_user_id: liffProfile.userId,
           name: liffProfile.displayName,
           phone: "",
           email: "",
@@ -125,11 +128,11 @@ const Profile = () => {
 
     setIsLoading(true);
     try {
-      console.log('Saving profile for user:', liffProfile.userId);
+      console.log('Saving profile for LINE user:', liffProfile.userId);
       console.log('Profile data to save:', editProfile);
 
       const profileData = {
-        user_id: liffProfile.userId,
+        line_user_id: liffProfile.userId,
         name: editProfile.name.trim(),
         phone: editProfile.phone.trim(),
         email: editProfile.email.trim(),
@@ -143,7 +146,7 @@ const Profile = () => {
       const { data: existingData, error: checkError } = await supabase
         .from('profiles')
         .select('id')
-        .eq('user_id', liffProfile.userId)
+        .eq('line_user_id', liffProfile.userId)
         .maybeSingle();
 
       if (checkError) {
@@ -160,7 +163,7 @@ const Profile = () => {
         result = await supabase
           .from('profiles')
           .update(profileData)
-          .eq('user_id', liffProfile.userId)
+          .eq('line_user_id', liffProfile.userId)
           .select()
           .single();
       } else {
@@ -182,6 +185,7 @@ const Profile = () => {
 
       const updatedProfile: UserProfile = {
         id: result.data.id,
+        line_user_id: result.data.line_user_id,
         name: result.data.name,
         phone: result.data.phone || "",
         email: result.data.email || "",
