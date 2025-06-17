@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -214,7 +215,7 @@ const FavoriteAddresses = () => {
                 <div className="flex items-start justify-between">
                   <div className="flex items-start flex-1">
                     <Icon className="h-5 w-5 text-emerald-600 mt-1 mr-3 flex-shrink-0" />
-                    <div className="flex-1 space-y-3">
+                    <div className="flex-1">
                       {/* 地址區塊 */}
                       {address.address && (
                         <div>
@@ -223,21 +224,12 @@ const FavoriteAddresses = () => {
                         </div>
                       )}
                       
-                      {/* 代碼區塊 */}
-                      {address.code && (
+                      {/* 純代碼區塊 */}
+                      {!address.address && address.code && (
                         <div className="bg-emerald-50 border border-emerald-200 rounded-md p-2">
                           <div className="flex items-center">
                             <Hash className="h-3 w-3 text-emerald-600 mr-1" />
-                            {address.address ? (
-                              <>
-                                <span className="text-xs font-medium text-emerald-700">代碼：</span>
-                                <span className="text-xs text-emerald-600 ml-1">{address.code}</span>
-                              </>
-                            ) : (
-                              <>
-                                <span className="text-xs font-medium text-emerald-700">{address.name}</span>
-                              </>
-                            )}
+                            <span className="text-xs font-medium text-emerald-700">{address.name}</span>
                           </div>
                         </div>
                       )}
