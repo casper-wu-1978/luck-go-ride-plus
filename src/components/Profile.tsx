@@ -6,10 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
-import { User, Phone, Mail, Bell, Shield, LogOut, Edit, Building, MapPin } from "lucide-react";
+import { User, Phone, Mail, Bell, Edit, Building, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLiff } from "@/contexts/LiffContext";
-import { supabase } from "@/integrations/supabase/client";
+import { closeLiff } from "@/lib/liff";
 
 interface UserProfile {
   id?: string;
@@ -33,140 +33,36 @@ const Profile = () => {
   const [editProfile, setEditProfile] = useState<UserProfile>(profile);
   const [notifications, setNotifications] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [user, setUser] = useState<any>(null);
   const { toast } = useToast();
 
-  // 檢查用戶登入狀態
+  // 使用 LIFF 資料初始化個人資料
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    // 立即檢查當前會話
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-    };
-    checkUser();
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // 載入用戶資料
-  useEffect(() => {
-    if (user && !liffLoading) {
-      loadUserProfile();
-    }
-  }, [user, liffLoading]);
-
-  // 使用 LIFF 資料更新本地資料
-  useEffect(() => {
-    if (liffProfile && profile.name === "") {
-      const updatedProfile = {
-        ...profile,
+    if (liffProfile && !liffLoading) {
+      const userProfile = {
         name: liffProfile.displayName,
+        phone: "",
+        email: "",
+        business_name: "",
+        business_address: "",
       };
-      setProfile(updatedProfile);
-      setEditProfile(updatedProfile);
+      setProfile(userProfile);
+      setEditProfile(userProfile);
     }
-  }, [liffProfile, profile]);
-
-  const loadUserProfile = async () => {
-    if (!user) return;
-
-    setIsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('載入資料錯誤:', error);
-        toast({
-          title: "載入失敗",
-          description: "無法載入個人資料",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (data) {
-        const userProfile = {
-          id: data.id,
-          name: data.name || (liffProfile?.displayName || ""),
-          phone: data.phone || "",
-          email: data.email || "",
-          business_name: data.business_name || "",
-          business_address: data.business_address || "",
-        };
-        setProfile(userProfile);
-        setEditProfile(userProfile);
-      } else if (liffProfile) {
-        // 如果沒有資料但有 LIFF 資料，使用 LIFF 資料
-        const newProfile = {
-          name: liffProfile.displayName,
-          phone: "",
-          email: "",
-          business_name: "",
-          business_address: "",
-        };
-        setProfile(newProfile);
-        setEditProfile(newProfile);
-      }
-    } catch (error) {
-      console.error('載入資料錯誤:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [liffProfile, liffLoading]);
 
   const handleSaveProfile = async () => {
-    if (!user) {
-      toast({
-        title: "請先登入",
-        description: "需要登入才能儲存資料",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsLoading(true);
     try {
+      // 這裡可以將資料保存到本地存儲或其他服務
+      // 由於只使用 LINE 登入，我們將資料保存到 localStorage
       const profileData = {
-        user_id: user.id,
-        name: editProfile.name,
-        phone: editProfile.phone,
-        email: editProfile.email,
-        business_name: editProfile.business_name,
-        business_address: editProfile.business_address,
+        userId: liffProfile?.userId,
+        ...editProfile,
       };
-
-      const { data, error } = await supabase
-        .from('profiles')
-        .upsert(profileData, { onConflict: 'user_id' })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('儲存錯誤:', error);
-        toast({
-          title: "儲存失敗",
-          description: "無法儲存個人資料",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      setProfile({
-        id: data.id,
-        name: data.name,
-        phone: data.phone || "",
-        email: data.email || "",
-        business_name: data.business_name || "",
-        business_address: data.business_address || "",
-      });
+      
+      localStorage.setItem('user_profile', JSON.stringify(profileData));
+      
+      setProfile(editProfile);
       setIsEditing(false);
       toast({
         title: "更新成功",
@@ -184,26 +80,31 @@ const Profile = () => {
     }
   };
 
+  // 載入本地保存的資料
+  useEffect(() => {
+    if (liffProfile) {
+      const savedProfile = localStorage.getItem('user_profile');
+      if (savedProfile) {
+        try {
+          const parsedProfile = JSON.parse(savedProfile);
+          if (parsedProfile.userId === liffProfile.userId) {
+            setProfile(parsedProfile);
+            setEditProfile(parsedProfile);
+          }
+        } catch (error) {
+          console.error('載入本地資料錯誤:', error);
+        }
+      }
+    }
+  }, [liffProfile]);
+
   const handleCancelEdit = () => {
     setEditProfile(profile);
     setIsEditing(false);
   };
 
-  const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-      toast({
-        title: "登出成功",
-        description: "已安全登出",
-      });
-    } catch (error) {
-      console.error('登出錯誤:', error);
-      toast({
-        title: "登出失敗",
-        description: "請稍後再試",
-        variant: "destructive",
-      });
-    }
+  const handleExit = () => {
+    closeLiff();
   };
 
   if (liffLoading || isLoading) {
@@ -217,7 +118,7 @@ const Profile = () => {
     );
   }
 
-  const displayName = profile.name || liffProfile?.displayName || user?.email || "用戶";
+  const displayName = liffProfile?.displayName || "用戶";
   const avatarUrl = liffProfile?.pictureUrl;
 
   return (
@@ -233,8 +134,8 @@ const Profile = () => {
           </Avatar>
           <h2 className="text-xl font-bold mb-1">{displayName}</h2>
           <p className="opacity-90">Luck Go 用戶</p>
-          {user?.id && (
-            <p className="text-sm opacity-75 mt-1">ID: {user.id.slice(-8)}</p>
+          {liffProfile?.userId && (
+            <p className="text-sm opacity-75 mt-1">LINE ID: {liffProfile.userId.slice(-8)}</p>
           )}
         </CardContent>
       </Card>
@@ -341,7 +242,7 @@ const Profile = () => {
                 <Mail className="h-4 w-4 text-gray-500 mr-3" />
                 <div>
                   <p className="text-sm text-gray-500">電子郵件</p>
-                  <p className="font-medium">{profile.email || user?.email || "未設定"}</p>
+                  <p className="font-medium">{profile.email || "未設定"}</p>
                 </div>
               </div>
 
@@ -369,7 +270,7 @@ const Profile = () => {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center text-emerald-700">
-            <Shield className="h-5 w-5 mr-2" />
+            <Bell className="h-5 w-5 mr-2" />
             設定
           </CardTitle>
         </CardHeader>
@@ -390,14 +291,13 @@ const Profile = () => {
         </CardContent>
       </Card>
 
-      {/* Logout */}
+      {/* Exit */}
       <Button 
         variant="outline" 
         className="w-full text-red-600 border-red-200 hover:bg-red-50"
-        onClick={handleLogout}
+        onClick={handleExit}
       >
-        <LogOut className="h-4 w-4 mr-2" />
-        登出
+        關閉應用程式
       </Button>
     </div>
   );
