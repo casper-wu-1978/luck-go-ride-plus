@@ -88,7 +88,7 @@ const FavoriteAddresses = () => {
           <CardHeader>
             <CardTitle className="text-emerald-700">新增地址</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
             <div>
               <Label htmlFor="addressName">名稱</Label>
               <Input
@@ -99,19 +99,22 @@ const FavoriteAddresses = () => {
               />
             </div>
             
-            <div>
-              <Label htmlFor="addressDetail">地址</Label>
+            {/* 地址區塊 */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <Label htmlFor="addressDetail" className="text-blue-700 font-medium">地址</Label>
               <Input
                 id="addressDetail"
                 placeholder="請輸入完整地址"
                 value={newAddress}
                 onChange={(e) => setNewAddress(e.target.value)}
+                className="mt-2"
               />
             </div>
 
-            <div className="border-t pt-4">
-              <Label htmlFor="addressCode" className="text-emerald-700">代碼</Label>
-              <p className="text-xs text-gray-500 mb-2">選填：包廂號碼、房間號碼等</p>
+            {/* 代碼區塊 */}
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+              <Label htmlFor="addressCode" className="text-emerald-700 font-medium">代碼</Label>
+              <p className="text-xs text-gray-500 mt-1 mb-2">選填：包廂號碼、房間號碼等</p>
               <Input
                 id="addressCode"
                 placeholder="例如：A101、VIP包廂、201房"
