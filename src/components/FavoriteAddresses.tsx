@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -57,7 +56,7 @@ const FavoriteAddresses = () => {
         return;
       }
 
-      const formattedAddresses = (data || []).map(addr => ({
+      const formattedAddresses: FavoriteAddress[] = (data || []).map(addr => ({
         id: addr.id,
         name: addr.name,
         address: addr.address || "",
@@ -120,7 +119,7 @@ const FavoriteAddresses = () => {
         return;
       }
 
-      const newAddressObj = {
+      const newAddressObj: FavoriteAddress = {
         id: data.id,
         name: data.name,
         address: data.address || "",
@@ -194,7 +193,7 @@ const FavoriteAddresses = () => {
         return;
       }
 
-      const newCodeObj = {
+      const newCodeObj: FavoriteAddress = {
         id: data.id,
         name: data.name,
         address: data.address || "",
