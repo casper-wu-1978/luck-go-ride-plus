@@ -9,7 +9,10 @@ export interface LiffProfile {
 }
 
 // 檢測是否為開發環境
-const isDevelopment = import.meta.env.DEV || window.location.hostname === 'localhost' || window.location.hostname.includes('lovableproject.com');
+const isDevelopment = import.meta.env.DEV || 
+  window.location.hostname === 'localhost' || 
+  window.location.hostname.includes('lovableproject.com') ||
+  window.location.hostname.includes('lovable.app');
 
 // 開發模式的模擬資料
 const mockProfile: LiffProfile = {
@@ -22,24 +25,40 @@ const mockProfile: LiffProfile = {
 export const initializeLiff = async (): Promise<boolean> => {
   try {
     if (isDevelopment) {
-      console.log('開發模式：跳過 LIFF 初始化');
+      console.log('開發模式：跳過 LIFF 初始化，使用模擬資料');
       return true;
     }
 
     // LIFF ID from LINE Developers Console
-    await liff.init({ liffId: '2007590095-84XDyloy' });
+    await liff.init({ 
+      liffId: '2007590095-84XDyloy',
+      withLoginOnExternalBrowser: true  // 允許外部瀏覽器登入
+    });
     
     if (!liff.isLoggedIn()) {
-      liff.login();
+      console.log('用戶未登入，開始登入流程');
+      liff.login({
+        redirectUri: window.location.href
+      });
       return false;
     }
     
+    console.log('LIFF 初始化成功，用戶已登入');
     return true;
   } catch (error) {
     console.error('LIFF initialization failed:', error);
     if (isDevelopment) {
-      console.log('開發模式：使用模擬資料');
+      console.log('開發模式：LIFF 初始化失敗，使用模擬資料');
       return true;
+    }
+    
+    // 如果是連線錯誤，嘗試使用外部瀏覽器
+    console.log('嘗試在外部瀏覽器中開啟');
+    if (liff.isInClient()) {
+      liff.openWindow({
+        url: window.location.href,
+        external: true
+      });
     }
     return false;
   }
@@ -48,15 +67,18 @@ export const initializeLiff = async (): Promise<boolean> => {
 export const getLiffProfile = async (): Promise<LiffProfile | null> => {
   try {
     if (isDevelopment) {
-      console.log('開發模式：返回模擬資料');
+      console.log('開發模式：返回模擬用戶資料');
       return mockProfile;
     }
 
     if (!liff.isLoggedIn()) {
+      console.log('用戶未登入，無法取得個人資料');
       return null;
     }
     
     const profile = await liff.getProfile();
+    console.log('成功取得 LINE 用戶資料:', profile);
+    
     return {
       userId: profile.userId,
       displayName: profile.displayName,
@@ -81,7 +103,16 @@ export const closeLiff = () => {
 
   if (liff.isInClient()) {
     liff.closeWindow();
+  } else {
+    window.close();
   }
+};
+
+export const isInLineApp = () => {
+  if (isDevelopment) {
+    return false;
+  }
+  return liff.isInClient();
 };
 
 export default liff;

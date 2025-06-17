@@ -60,6 +60,63 @@ export type Database = {
         }
         Relationships: []
       }
+      driver_profiles: {
+        Row: {
+          created_at: string
+          driver_id: string
+          email: string | null
+          id: string
+          join_date: string
+          license_number: string | null
+          line_user_id: string | null
+          name: string
+          phone: string | null
+          plate_number: string | null
+          rating: number | null
+          status: string | null
+          updated_at: string
+          vehicle_brand: string | null
+          vehicle_color: string | null
+          vehicle_type: string | null
+        }
+        Insert: {
+          created_at?: string
+          driver_id: string
+          email?: string | null
+          id?: string
+          join_date?: string
+          license_number?: string | null
+          line_user_id?: string | null
+          name: string
+          phone?: string | null
+          plate_number?: string | null
+          rating?: number | null
+          status?: string | null
+          updated_at?: string
+          vehicle_brand?: string | null
+          vehicle_color?: string | null
+          vehicle_type?: string | null
+        }
+        Update: {
+          created_at?: string
+          driver_id?: string
+          email?: string | null
+          id?: string
+          join_date?: string
+          license_number?: string | null
+          line_user_id?: string | null
+          name?: string
+          phone?: string | null
+          plate_number?: string | null
+          rating?: number | null
+          status?: string | null
+          updated_at?: string
+          vehicle_brand?: string | null
+          vehicle_color?: string | null
+          vehicle_type?: string | null
+        }
+        Relationships: []
+      }
       favorite_addresses: {
         Row: {
           address: string | null
