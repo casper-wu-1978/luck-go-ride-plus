@@ -110,15 +110,15 @@ const CallCar = () => {
             +1 叫車
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-4">
           {/* Car Type Selection */}
           <div>
-            <Label className="text-sm font-medium text-gray-700 mb-3 block">
+            <Label className="text-sm font-medium text-gray-700 mb-2 block">
               車型選擇
             </Label>
-            <RadioGroup value={carType} onValueChange={setCarType} className="flex flex-row space-x-6">
+            <RadioGroup value={carType} onValueChange={setCarType} className="flex flex-row space-x-4">
               {carTypes.map((type) => (
-                <div key={type.id} className="flex items-center space-x-2">
+                <div key={type.id} className="flex items-center space-x-1">
                   <RadioGroupItem value={type.id} id={type.id} />
                   <Label htmlFor={type.id} className="text-sm cursor-pointer">
                     {type.label}
