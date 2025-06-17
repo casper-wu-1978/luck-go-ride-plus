@@ -354,8 +354,7 @@ const CallCar = () => {
                     <div className="grid grid-cols-1 gap-2">
                       <div className="flex items-center text-green-700">
                         <User className="h-4 w-4 mr-2" />
-                        <span className="text-sm font-medium">乘客：</span>
-                        <span className="text-sm ml-1">{userProfile.name}</span>
+                        <span className="text-sm">{userProfile.name}</span>
                         <Phone className="h-4 w-4 ml-4 mr-1" />
                         <span className="text-sm">{userProfile.phone}</span>
                       </div>
