@@ -1,4 +1,5 @@
 
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +19,13 @@ interface CallRecord {
   timestamp: Date;
   favoriteType: string;
   favoriteInfo?: string;
+  driverInfo?: {
+    name: string;
+    phone: string;
+    plateNumber: string;
+    carBrand: string;
+    carColor: string;
+  };
 }
 
 const CallCar = () => {
@@ -121,10 +129,19 @@ const CallCar = () => {
     setTimeout(() => {
       const success = Math.random() > 0.3; // 70% 成功率
       
+      // Generate mock driver info if successful
+      const driverInfo = success ? {
+        name: "王師傅",
+        phone: "0987-654-321",
+        plateNumber: "ABC-1234",
+        carBrand: "Toyota",
+        carColor: "白色"
+      } : undefined;
+      
       setCallRecords(prev => 
         prev.map(record => 
           record.id === newCallRecord.id 
-            ? { ...record, status: success ? 'matched' : 'failed' }
+            ? { ...record, status: success ? 'matched' : 'failed', driverInfo }
             : record
         )
       );
@@ -350,6 +367,31 @@ const CallCar = () => {
                     </div>
                   </div>
                   
+                  {/* Driver Information - Only show when matched */}
+                  {record.status === 'matched' && record.driverInfo && (
+                    <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded">
+                      <div className="text-blue-800 font-medium text-sm mb-2">司機資訊</div>
+                      <div className="grid grid-cols-1 gap-2">
+                        <div className="flex items-center text-blue-700">
+                          <User className="h-4 w-4 mr-2" />
+                          <span className="text-sm font-medium">司機：</span>
+                          <span className="text-sm ml-1">{record.driverInfo.name}</span>
+                          <Phone className="h-4 w-4 ml-4 mr-1" />
+                          <span className="text-sm">{record.driverInfo.phone}</span>
+                        </div>
+                        <div className="flex items-center text-blue-700">
+                          <Car className="h-4 w-4 mr-2" />
+                          <span className="text-sm font-medium">車牌：</span>
+                          <span className="text-sm ml-1">{record.driverInfo.plateNumber}</span>
+                          <span className="text-sm ml-4 font-medium">品牌：</span>
+                          <span className="text-sm ml-1">{record.driverInfo.carBrand}</span>
+                          <span className="text-sm ml-4 font-medium">顏色：</span>
+                          <span className="text-sm ml-1">{record.driverInfo.carColor}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
                   {/* User Profile Information - Only show business info if no address is selected */}
                   <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded">
                     <div className="grid grid-cols-1 gap-2">
@@ -411,3 +453,4 @@ const CallCar = () => {
 };
 
 export default CallCar;
+
