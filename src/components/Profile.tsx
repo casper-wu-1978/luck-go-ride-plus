@@ -68,7 +68,7 @@ const Profile = () => {
       if (data) {
         const userProfile: UserProfile = {
           id: data.id,
-          line_user_id: data.line_user_id,
+          line_user_id: data.line_user_id || liffProfile.userId,
           name: data.name || liffProfile.displayName,
           phone: data.phone || "",
           email: data.email || "",
@@ -185,7 +185,7 @@ const Profile = () => {
 
       const updatedProfile: UserProfile = {
         id: result.data.id,
-        line_user_id: result.data.line_user_id,
+        line_user_id: result.data.line_user_id || liffProfile.userId,
         name: result.data.name,
         phone: result.data.phone || "",
         email: result.data.email || "",
