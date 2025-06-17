@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,7 +5,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { Car, Clock, User, Phone, MapPin, Hash } from "lucide-react";
+import { Car, Clock, Hash } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface CallRecord {
@@ -21,9 +20,6 @@ const CallCar = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [carType, setCarType] = useState("unlimited");
   const [favoriteType, setFavoriteType] = useState("none");
-  const [contactName, setContactName] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
-  const [businessAddress, setBusinessAddress] = useState("");
   const [selectedCode, setSelectedCode] = useState("");
   const [selectedAddressName, setSelectedAddressName] = useState("");
   const [selectedAddress, setSelectedAddress] = useState("");
@@ -58,16 +54,6 @@ const CallCar = () => {
   ];
 
   const handleCallCar = async () => {
-    // 驗證必填欄位
-    if (!contactName || !contactPhone || !businessAddress) {
-      toast({
-        title: "請填寫完整資訊",
-        description: "請輸入聯絡人姓名、電話和商家住址",
-        variant: "destructive"
-      });
-      return;
-    }
-
     if (favoriteType === "code" && !selectedCode) {
       toast({
         title: "請選擇代碼",
@@ -200,48 +186,6 @@ const CallCar = () => {
             </RadioGroup>
           </div>
 
-          {/* Common Fields - Always shown */}
-          <div className="space-y-3">
-            <div>
-              <Label htmlFor="contactName" className="text-sm font-medium text-gray-700 mb-1 block">
-                <User className="h-4 w-4 inline mr-1" />
-                聯絡人姓名
-              </Label>
-              <Input
-                id="contactName"
-                placeholder="請輸入聯絡人姓名"
-                value={contactName}
-                onChange={(e) => setContactName(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="contactPhone" className="text-sm font-medium text-gray-700 mb-1 block">
-                <Phone className="h-4 w-4 inline mr-1" />
-                電話
-              </Label>
-              <Input
-                id="contactPhone"
-                placeholder="請輸入聯絡電話"
-                value={contactPhone}
-                onChange={(e) => setContactPhone(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="businessAddress" className="text-sm font-medium text-gray-700 mb-1 block">
-                <MapPin className="h-4 w-4 inline mr-1" />
-                商家住址
-              </Label>
-              <Input
-                id="businessAddress"
-                placeholder="請輸入商家住址"
-                value={businessAddress}
-                onChange={(e) => setBusinessAddress(e.target.value)}
-              />
-            </div>
-          </div>
-
           {/* Code Selection - Only when favoriteType is "code" */}
           {favoriteType === "code" && (
             <div>
@@ -267,7 +211,6 @@ const CallCar = () => {
             <div className="space-y-3">
               <div>
                 <Label className="text-sm font-medium text-gray-700 mb-2 block">
-                  <MapPin className="h-4 w-4 inline mr-1" />
                   選擇地址
                 </Label>
                 <RadioGroup 
