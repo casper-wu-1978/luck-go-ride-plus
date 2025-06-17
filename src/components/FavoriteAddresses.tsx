@@ -14,15 +14,15 @@ const FavoriteAddresses = () => {
   ]);
   
   const [isAdding, setIsAdding] = useState(false);
-  const [newName, setNewName] = useState("");
+  const [newCode, setNewCode] = useState("");
   const [newAddress, setNewAddress] = useState("");
   const { toast } = useToast();
 
   const handleAddAddress = () => {
-    if (!newName || !newAddress) {
+    if (!newCode || !newAddress) {
       toast({
         title: "請填寫完整資訊",
-        description: "請輸入地址名稱和詳細地址",
+        description: "請輸入代號和地址",
         variant: "destructive",
       });
       return;
@@ -30,13 +30,13 @@ const FavoriteAddresses = () => {
 
     const newAddressObj = {
       id: Date.now(),
-      name: newName,
+      name: newCode,
       address: newAddress,
       icon: MapPin,
     };
 
     setAddresses([...addresses, newAddressObj]);
-    setNewName("");
+    setNewCode("");
     setNewAddress("");
     setIsAdding(false);
     
@@ -56,15 +56,6 @@ const FavoriteAddresses = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <Card className="bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0">
-        <CardContent className="p-6 text-center">
-          <MapPin className="h-12 w-12 mx-auto mb-4 opacity-90" />
-          <h2 className="text-xl font-bold mb-2">常用地址</h2>
-          <p className="opacity-90">快速選擇常用地點</p>
-        </CardContent>
-      </Card>
-
       {/* Add Address Button */}
       {!isAdding && (
         <Button 
@@ -84,17 +75,17 @@ const FavoriteAddresses = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="addressName">地址名稱</Label>
+              <Label htmlFor="addressCode">代號</Label>
               <Input
-                id="addressName"
+                id="addressCode"
                 placeholder="例如：家裡、公司、學校"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
+                value={newCode}
+                onChange={(e) => setNewCode(e.target.value)}
               />
             </div>
             
             <div>
-              <Label htmlFor="addressDetail">詳細地址</Label>
+              <Label htmlFor="addressDetail">地址</Label>
               <Input
                 id="addressDetail"
                 placeholder="請輸入完整地址"
@@ -111,7 +102,7 @@ const FavoriteAddresses = () => {
                 variant="outline" 
                 onClick={() => {
                   setIsAdding(false);
-                  setNewName("");
+                  setNewCode("");
                   setNewAddress("");
                 }}
                 className="flex-1"
