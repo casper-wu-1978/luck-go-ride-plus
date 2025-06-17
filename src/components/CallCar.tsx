@@ -1,5 +1,3 @@
-
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -374,7 +372,6 @@ const CallCar = () => {
                       <div className="grid grid-cols-1 gap-2">
                         <div className="flex items-center text-blue-700">
                           <User className="h-4 w-4 mr-2" />
-                          <span className="text-sm font-medium">司機：</span>
                           <span className="text-sm ml-1">{record.driverInfo.name}</span>
                           <Phone className="h-4 w-4 ml-4 mr-1" />
                           <span className="text-sm">{record.driverInfo.phone}</span>
@@ -453,4 +450,3 @@ const CallCar = () => {
 };
 
 export default CallCar;
-
