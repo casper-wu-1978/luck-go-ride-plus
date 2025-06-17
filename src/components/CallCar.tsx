@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
-import { Car, Clock } from "lucide-react";
+import { Car, Clock, User, Phone, MapPin, Hash } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface CallRecord {
@@ -19,6 +20,13 @@ interface CallRecord {
 const CallCar = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [carType, setCarType] = useState("unlimited");
+  const [favoriteType, setFavoriteType] = useState("none");
+  const [contactName, setContactName] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [businessAddress, setBusinessAddress] = useState("");
+  const [selectedCode, setSelectedCode] = useState("");
+  const [selectedAddressName, setSelectedAddressName] = useState("");
+  const [selectedAddress, setSelectedAddress] = useState("");
   const [callRecords, setCallRecords] = useState<CallRecord[]>([]);
   const { toast } = useToast();
 
@@ -30,7 +38,54 @@ const CallCar = () => {
     { id: "driver", label: "代駕" },
   ];
 
+  const favoriteTypes = [
+    { id: "none", label: "無選擇" },
+    { id: "code", label: "代碼" },
+    { id: "address", label: "住址" },
+  ];
+
+  // 模擬常用代碼數據
+  const favoriteCodes = [
+    { id: "A101", label: "A101" },
+    { id: "B302", label: "B302" },
+    { id: "VIP包廂", label: "VIP包廂" },
+  ];
+
+  // 模擬常用地址數據
+  const favoriteAddresses = [
+    { id: 1, name: "家裡", address: "台北市信義區信義路五段7號" },
+    { id: 2, name: "公司", address: "台北市松山區敦化北路100號" },
+  ];
+
   const handleCallCar = async () => {
+    // 驗證必填欄位
+    if (!contactName || !contactPhone || !businessAddress) {
+      toast({
+        title: "請填寫完整資訊",
+        description: "請輸入聯絡人姓名、電話和商家住址",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (favoriteType === "code" && !selectedCode) {
+      toast({
+        title: "請選擇代碼",
+        description: "請選擇一個代碼",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (favoriteType === "address" && (!selectedAddressName || !selectedAddress)) {
+      toast({
+        title: "請選擇地址",
+        description: "請選擇一個地址",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (callRecords.length >= 10) {
       toast({
         title: "叫車次數已達上限",
@@ -101,7 +156,7 @@ const CallCar = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Simple +1 Call Car */}
       <Card>
         <CardHeader>
@@ -127,6 +182,129 @@ const CallCar = () => {
               ))}
             </RadioGroup>
           </div>
+
+          {/* Favorite Type Selection */}
+          <div>
+            <Label className="text-sm font-medium text-gray-700 mb-2 block">
+              常用選擇
+            </Label>
+            <RadioGroup value={favoriteType} onValueChange={setFavoriteType} className="flex flex-row space-x-4">
+              {favoriteTypes.map((type) => (
+                <div key={type.id} className="flex items-center space-x-1">
+                  <RadioGroupItem value={type.id} id={type.id} />
+                  <Label htmlFor={type.id} className="text-sm cursor-pointer">
+                    {type.label}
+                  </Label>
+                </div>
+              ))}
+            </RadioGroup>
+          </div>
+
+          {/* Common Fields - Always shown */}
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="contactName" className="text-sm font-medium text-gray-700 mb-1 block">
+                <User className="h-4 w-4 inline mr-1" />
+                聯絡人姓名
+              </Label>
+              <Input
+                id="contactName"
+                placeholder="請輸入聯絡人姓名"
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="contactPhone" className="text-sm font-medium text-gray-700 mb-1 block">
+                <Phone className="h-4 w-4 inline mr-1" />
+                電話
+              </Label>
+              <Input
+                id="contactPhone"
+                placeholder="請輸入聯絡電話"
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="businessAddress" className="text-sm font-medium text-gray-700 mb-1 block">
+                <MapPin className="h-4 w-4 inline mr-1" />
+                商家住址
+              </Label>
+              <Input
+                id="businessAddress"
+                placeholder="請輸入商家住址"
+                value={businessAddress}
+                onChange={(e) => setBusinessAddress(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Code Selection - Only when favoriteType is "code" */}
+          {favoriteType === "code" && (
+            <div>
+              <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                <Hash className="h-4 w-4 inline mr-1" />
+                代碼
+              </Label>
+              <RadioGroup value={selectedCode} onValueChange={setSelectedCode} className="space-y-2">
+                {favoriteCodes.map((code) => (
+                  <div key={code.id} className="flex items-center space-x-2">
+                    <RadioGroupItem value={code.id} id={code.id} />
+                    <Label htmlFor={code.id} className="text-sm cursor-pointer">
+                      {code.label}
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </div>
+          )}
+
+          {/* Address Selection - Only when favoriteType is "address" */}
+          {favoriteType === "address" && (
+            <div className="space-y-3">
+              <div>
+                <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                  <MapPin className="h-4 w-4 inline mr-1" />
+                  選擇地址
+                </Label>
+                <RadioGroup 
+                  value={selectedAddressName} 
+                  onValueChange={(value) => {
+                    setSelectedAddressName(value);
+                    const address = favoriteAddresses.find(addr => addr.name === value);
+                    setSelectedAddress(address?.address || "");
+                  }} 
+                  className="space-y-2"
+                >
+                  {favoriteAddresses.map((address) => (
+                    <div key={address.id} className="flex items-center space-x-2">
+                      <RadioGroupItem value={address.name} id={address.name} />
+                      <Label htmlFor={address.name} className="text-sm cursor-pointer">
+                        {address.name}
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
+
+              {selectedAddress && (
+                <div>
+                  <Label htmlFor="selectedAddress" className="text-sm font-medium text-gray-700 mb-1 block">
+                    住址
+                  </Label>
+                  <Input
+                    id="selectedAddress"
+                    value={selectedAddress}
+                    readOnly
+                    className="bg-gray-50"
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Call Button */}
           <Button 
