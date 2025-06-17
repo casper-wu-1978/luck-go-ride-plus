@@ -39,9 +39,12 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto mb-4"></div>
           <p className="text-emerald-800 text-lg">載入中...</p>
           {showDevInfo && (
-            <p className="text-sm text-emerald-600 mt-2">
-              {isDevelopment ? '開發模式：正在初始化...' : '正式模式：連接 LINE 服務中...'}
-            </p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4 max-w-md mx-auto">
+              <p className="text-blue-800 text-sm font-medium">🛠️ 開發模式</p>
+              <p className="text-blue-700 text-xs mt-1">
+                正在初始化模擬環境...
+              </p>
+            </div>
           )}
         </div>
       </div>
@@ -60,8 +63,11 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
               <>
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
                   <p className="text-blue-800 font-medium mb-2">🛠️ 開發模式</p>
-                  <p className="text-blue-700 text-sm">
-                    此應用程式目前在開發模式運行。在手機中使用時會自動切換到正式模式。
+                  <p className="text-blue-700 text-sm mb-2">
+                    此應用程式目前在開發模式運行，使用模擬資料。
+                  </p>
+                  <p className="text-blue-600 text-xs">
+                    在手機的 LINE 應用中使用時會自動切換到正式模式。
                   </p>
                 </div>
                 <button 
