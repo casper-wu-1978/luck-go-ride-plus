@@ -25,10 +25,12 @@ const FavoriteAddresses = () => {
     },
   ]);
   
-  const [isAdding, setIsAdding] = useState(false);
+  const [isAddingAddress, setIsAddingAddress] = useState(false);
+  const [isAddingCode, setIsAddingCode] = useState(false);
   const [newName, setNewName] = useState("");
   const [newAddress, setNewAddress] = useState("");
   const [newCode, setNewCode] = useState("");
+  const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
   const { toast } = useToast();
 
   const handleAddAddress = () => {
@@ -45,19 +47,44 @@ const FavoriteAddresses = () => {
       id: Date.now(),
       name: newName,
       address: newAddress,
-      code: newCode,
+      code: "",
       icon: MapPin,
     };
 
     setAddresses([...addresses, newAddressObj]);
     setNewName("");
     setNewAddress("");
-    setNewCode("");
-    setIsAdding(false);
+    setIsAddingAddress(false);
     
     toast({
       title: "新增成功",
       description: "地址已新增",
+    });
+  };
+
+  const handleAddCode = () => {
+    if (!selectedAddressId || !newCode) {
+      toast({
+        title: "請填寫完整資訊",
+        description: "請選擇地址並輸入代碼",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setAddresses(addresses.map(addr => 
+      addr.id === selectedAddressId 
+        ? { ...addr, code: newCode }
+        : addr
+    ));
+    
+    setNewCode("");
+    setSelectedAddressId(null);
+    setIsAddingCode(false);
+    
+    toast({
+      title: "新增成功",
+      description: "代碼已新增",
     });
   };
 
@@ -71,24 +98,34 @@ const FavoriteAddresses = () => {
 
   return (
     <div className="space-y-6">
-      {/* Add Address Button */}
-      {!isAdding && (
-        <Button 
-          onClick={() => setIsAdding(true)}
-          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          新增地址
-        </Button>
+      {/* Add Buttons */}
+      {!isAddingAddress && !isAddingCode && (
+        <div className="space-y-3">
+          <Button 
+            onClick={() => setIsAddingAddress(true)}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            新增地址
+          </Button>
+          
+          <Button 
+            onClick={() => setIsAddingCode(true)}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            新增代碼
+          </Button>
+        </div>
       )}
 
       {/* Add Address Form */}
-      {isAdding && (
+      {isAddingAddress && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-emerald-700">新增地址</CardTitle>
+            <CardTitle className="text-blue-700">新增地址</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-4">
             <div>
               <Label htmlFor="addressName">名稱</Label>
               <Input
@@ -99,24 +136,65 @@ const FavoriteAddresses = () => {
               />
             </div>
             
-            {/* 地址區塊 */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <Label htmlFor="addressDetail" className="text-blue-700 font-medium">地址</Label>
+            <div>
+              <Label htmlFor="addressDetail">地址</Label>
               <Input
                 id="addressDetail"
                 placeholder="請輸入完整地址"
                 value={newAddress}
                 onChange={(e) => setNewAddress(e.target.value)}
-                className="mt-2"
               />
             </div>
 
-            {/* 代碼區塊 */}
-            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-              <Label htmlFor="addressCode" className="text-emerald-700 font-medium">代碼</Label>
-              <p className="text-xs text-gray-500 mt-1 mb-2">選填：包廂號碼、房間號碼等</p>
+            <div className="flex space-x-2 pt-4">
+              <Button onClick={handleAddAddress} className="flex-1 bg-blue-600 hover:bg-blue-700">
+                確認新增
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setIsAddingAddress(false);
+                  setNewName("");
+                  setNewAddress("");
+                }}
+                className="flex-1"
+              >
+                取消
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Add Code Form */}
+      {isAddingCode && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-emerald-700">新增代碼</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="selectAddress">選擇地址</Label>
+              <select
+                id="selectAddress"
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                value={selectedAddressId || ""}
+                onChange={(e) => setSelectedAddressId(Number(e.target.value) || null)}
+              >
+                <option value="">請選擇地址</option>
+                {addresses.map((address) => (
+                  <option key={address.id} value={address.id}>
+                    {address.name} - {address.address}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <Label htmlFor="codeInput">代碼</Label>
+              <p className="text-xs text-gray-500 mb-2">包廂號碼、房間號碼等</p>
               <Input
-                id="addressCode"
+                id="codeInput"
                 placeholder="例如：A101、VIP包廂、201房"
                 value={newCode}
                 onChange={(e) => setNewCode(e.target.value)}
@@ -124,16 +202,15 @@ const FavoriteAddresses = () => {
             </div>
 
             <div className="flex space-x-2 pt-4">
-              <Button onClick={handleAddAddress} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
+              <Button onClick={handleAddCode} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
                 確認新增
               </Button>
               <Button 
                 variant="outline" 
                 onClick={() => {
-                  setIsAdding(false);
-                  setNewName("");
-                  setNewAddress("");
+                  setIsAddingCode(false);
                   setNewCode("");
+                  setSelectedAddressId(null);
                 }}
                 className="flex-1"
               >
@@ -195,7 +272,7 @@ const FavoriteAddresses = () => {
       </div>
 
       {/* Empty State */}
-      {addresses.length === 0 && !isAdding && (
+      {addresses.length === 0 && !isAddingAddress && !isAddingCode && (
         <Card>
           <CardContent className="p-8 text-center">
             <MapPin className="h-12 w-12 mx-auto mb-4 text-gray-400" />
