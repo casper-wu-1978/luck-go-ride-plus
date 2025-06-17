@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -349,7 +350,7 @@ const CallCar = () => {
                     </div>
                   </div>
                   
-                  {/* User Profile Information */}
+                  {/* User Profile Information - Only show business info if no address is selected */}
                   <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded">
                     <div className="grid grid-cols-1 gap-2">
                       <div className="flex items-center text-green-700">
@@ -358,15 +359,19 @@ const CallCar = () => {
                         <Phone className="h-4 w-4 ml-4 mr-1" />
                         <span className="text-sm">{userProfile.phone}</span>
                       </div>
-                      <div className="flex items-center text-green-700">
-                        <Building className="h-4 w-4 mr-2" />
-                        <span className="text-sm font-medium">上車點：</span>
-                        <span className="text-sm ml-1">{userProfile.businessName}</span>
-                      </div>
-                      <div className="flex items-center text-green-700">
-                        <MapPin className="h-4 w-4 mr-2" />
-                        <span className="text-sm">{userProfile.businessAddress}</span>
-                      </div>
+                      {record.favoriteType !== "address" && (
+                        <>
+                          <div className="flex items-center text-green-700">
+                            <Building className="h-4 w-4 mr-2" />
+                            <span className="text-sm font-medium">上車點：</span>
+                            <span className="text-sm ml-1">{userProfile.businessName}</span>
+                          </div>
+                          <div className="flex items-center text-green-700">
+                            <MapPin className="h-4 w-4 mr-2" />
+                            <span className="text-sm">{userProfile.businessAddress}</span>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
                   
