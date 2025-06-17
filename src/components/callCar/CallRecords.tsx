@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Clock, X, User, Phone, Car, Building, MapPin, Hash } from "lucide-react";
-import { CallRecord, UserProfile } from "@/types/callCar";
+import { CallRecord } from "@/types/callCar";
+import { UserProfile } from "@/types/profile";
 
 interface CallRecordsProps {
   callRecords: CallRecord[];
@@ -105,20 +106,26 @@ const CallRecords = ({ callRecords, userProfile, onCancelCall }: CallRecordsProp
                   <div className="flex items-center text-green-700">
                     <User className="h-4 w-4 mr-2" />
                     <span className="text-sm">{userProfile.name}</span>
-                    <Phone className="h-4 w-4 ml-4 mr-1" />
-                    <span className="text-sm">{userProfile.phone}</span>
+                    {userProfile.phone && (
+                      <>
+                        <Phone className="h-4 w-4 ml-4 mr-1" />
+                        <span className="text-sm">{userProfile.phone}</span>
+                      </>
+                    )}
                   </div>
-                  {record.favoriteType !== "address" && (
+                  {record.favoriteType !== "address" && userProfile.business_name && (
                     <>
                       <div className="flex items-center text-green-700">
                         <Building className="h-4 w-4 mr-2" />
                         <span className="text-sm font-medium">上車點：</span>
-                        <span className="text-sm ml-1">{userProfile.businessName}</span>
+                        <span className="text-sm ml-1">{userProfile.business_name}</span>
                       </div>
-                      <div className="flex items-center text-green-700">
-                        <MapPin className="h-4 w-4 mr-2" />
-                        <span className="text-sm">{userProfile.businessAddress}</span>
-                      </div>
+                      {userProfile.business_address && (
+                        <div className="flex items-center text-green-700">
+                          <MapPin className="h-4 w-4 mr-2" />
+                          <span className="text-sm">{userProfile.business_address}</span>
+                        </div>
+                      )}
                     </>
                   )}
                 </div>

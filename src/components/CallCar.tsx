@@ -1,10 +1,11 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useLiff } from "@/contexts/LiffContext";
 import { CallRecord, FavoriteCode, FavoriteAddress } from "@/types/callCar";
-import { CAR_TYPES, USER_PROFILE, MAX_CALL_RECORDS } from "@/constants/callCar";
+import { CAR_TYPES, MAX_CALL_RECORDS } from "@/constants/callCar";
 import { loadFavorites, loadCallRecords, createCallRecord, updateCallRecord } from "@/utils/callCarApi";
+import { supabase } from "@/integrations/supabase/client";
+import { UserProfile } from "@/types/profile";
 import CallForm from "./callCar/CallForm";
 import CallRecords from "./callCar/CallRecords";
 
@@ -19,6 +20,7 @@ const CallCar = () => {
   const [callRecords, setCallRecords] = useState<CallRecord[]>([]);
   const [favoriteCodes, setFavoriteCodes] = useState<FavoriteCode[]>([]);
   const [favoriteAddresses, setFavoriteAddresses] = useState<FavoriteAddress[]>([]);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -30,12 +32,69 @@ const CallCar = () => {
   const loadUserData = async () => {
     if (!liffProfile?.userId) return;
 
+    // Load favorites and call records
     const { codes, addresses } = await loadFavorites(liffProfile.userId);
     setFavoriteCodes(codes);
     setFavoriteAddresses(addresses);
 
     const records = await loadCallRecords(liffProfile.userId);
     setCallRecords(records);
+
+    // Load user profile from database
+    await loadUserProfile();
+  };
+
+  const loadUserProfile = async () => {
+    if (!liffProfile?.userId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('line_user_id', liffProfile.userId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('載入個人資料錯誤:', error);
+        // 如果沒有個人資料，使用 LIFF 預設資料
+        setUserProfile({
+          name: liffProfile.displayName || "用戶",
+          phone: "",
+          email: "",
+          business_name: "",
+          business_address: ""
+        });
+        return;
+      }
+
+      if (data) {
+        setUserProfile({
+          name: data.name || liffProfile.displayName || "用戶",
+          phone: data.phone || "",
+          email: data.email || "",
+          business_name: data.business_name || "",
+          business_address: data.business_address || ""
+        });
+      } else {
+        // 如果沒有個人資料，使用 LIFF 預設資料
+        setUserProfile({
+          name: liffProfile.displayName || "用戶",
+          phone: "",
+          email: "",
+          business_name: "",
+          business_address: ""
+        });
+      }
+    } catch (error) {
+      console.error('載入個人資料錯誤:', error);
+      setUserProfile({
+        name: liffProfile.displayName || "用戶",
+        phone: "",
+        email: "",
+        business_name: "",
+        business_address: ""
+      });
+    }
   };
 
   const handleCallCar = async () => {
@@ -199,11 +258,13 @@ const CallCar = () => {
         onCallCar={handleCallCar}
       />
 
-      <CallRecords
-        callRecords={callRecords}
-        userProfile={USER_PROFILE}
-        onCancelCall={handleCancelCall}
-      />
+      {userProfile && (
+        <CallRecords
+          callRecords={callRecords}
+          userProfile={userProfile}
+          onCancelCall={handleCancelCall}
+        />
+      )}
     </div>
   );
 };

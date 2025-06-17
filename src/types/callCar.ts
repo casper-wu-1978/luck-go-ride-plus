@@ -16,13 +16,6 @@ export interface CallRecord {
   };
 }
 
-export interface UserProfile {
-  name: string;
-  phone: string;
-  businessName: string;
-  businessAddress: string;
-}
-
 export interface FavoriteCode {
   id: string;
   label: string;
