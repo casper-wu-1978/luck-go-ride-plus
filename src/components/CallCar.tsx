@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,14 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Car, Clock, Hash } from "lucide-react";
+import { Car, Clock, Hash, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface CallRecord {
   id: number;
   carType: string;
   carTypeLabel: string;
-  status: 'waiting' | 'matched' | 'failed';
+  status: 'waiting' | 'matched' | 'failed' | 'cancelled';
   timestamp: Date;
 }
 
@@ -131,11 +132,27 @@ const CallCar = () => {
     }, 3000);
   };
 
+  const handleCancelCall = (recordId: number) => {
+    setCallRecords(prev => 
+      prev.map(record => 
+        record.id === recordId 
+          ? { ...record, status: 'cancelled' }
+          : record
+      )
+    );
+
+    toast({
+      title: "已取消叫車",
+      description: "您的叫車請求已成功取消",
+    });
+  };
+
   const getStatusText = (status: string) => {
     switch (status) {
       case 'waiting': return '等待媒合中...';
       case 'matched': return '媒合成功';
       case 'failed': return '媒合失敗';
+      case 'cancelled': return '已取消';
       default: return '';
     }
   };
@@ -145,6 +162,7 @@ const CallCar = () => {
       case 'waiting': return 'text-yellow-600';
       case 'matched': return 'text-green-600';
       case 'failed': return 'text-red-600';
+      case 'cancelled': return 'text-gray-600';
       default: return '';
     }
   };
@@ -300,9 +318,22 @@ const CallCar = () => {
                         {record.timestamp.toLocaleTimeString()}
                       </span>
                     </div>
-                    <span className={`text-sm font-medium ${getStatusColor(record.status)}`}>
-                      {getStatusText(record.status)}
-                    </span>
+                    <div className="flex items-center space-x-2">
+                      <span className={`text-sm font-medium ${getStatusColor(record.status)}`}>
+                        {getStatusText(record.status)}
+                      </span>
+                      {record.status === 'waiting' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleCancelCall(record.id)}
+                          className="h-6 px-2 text-xs border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400"
+                        >
+                          <X className="h-3 w-3 mr-1" />
+                          取消
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   
                   {record.status === 'waiting' && (
