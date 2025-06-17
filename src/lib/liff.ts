@@ -10,8 +10,8 @@ export interface LiffProfile {
 
 export const initializeLiff = async (): Promise<boolean> => {
   try {
-    // LIFF ID 需要從 LINE Developers Console 獲取
-    await liff.init({ liffId: '1234567890-abcdefgh' }); // 請替換為實際的 LIFF ID
+    // LIFF ID from LINE Developers Console
+    await liff.init({ liffId: '2007590095-84XDyloy' });
     
     if (!liff.isLoggedIn()) {
       liff.login();
