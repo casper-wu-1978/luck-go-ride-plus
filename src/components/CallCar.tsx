@@ -13,10 +13,10 @@ const CallCar = () => {
   const { toast } = useToast();
 
   const carTypes = [
-    { id: "unlimited", label: "不限", isDefault: true },
-    { id: "taxi", label: "小黃", isDefault: false },
-    { id: "diverse", label: "多元", isDefault: false },
-    { id: "private", label: "白牌", isDefault: false },
+    { id: "unlimited", label: "不限" },
+    { id: "taxi", label: "小黃" },
+    { id: "diverse", label: "多元" },
+    { id: "private", label: "白牌" },
   ];
 
   const handleCallCar = async () => {
@@ -50,7 +50,7 @@ const CallCar = () => {
             <Label className="text-sm font-medium text-gray-700 mb-3 block">
               車型選擇
             </Label>
-            <RadioGroup value={carType} onValueChange={setCarType} className="space-y-2">
+            <RadioGroup value={carType} onValueChange={setCarType} className="flex flex-row space-x-6">
               {carTypes.map((type) => (
                 <div key={type.id} className="flex items-center space-x-2">
                   <RadioGroupItem value={type.id} id={type.id} />
