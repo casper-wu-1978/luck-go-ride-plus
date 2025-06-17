@@ -10,9 +10,11 @@ import { User, Phone, Mail, Bell, Edit, Building, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLiff } from "@/contexts/LiffContext";
 import { closeLiff } from "@/lib/liff";
+import { supabase } from "@/integrations/supabase/client";
 
 interface UserProfile {
   id?: string;
+  line_user_id?: string;
   name: string;
   phone: string;
   email: string;
@@ -35,38 +37,112 @@ const Profile = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
+  // 從資料庫載入個人資料
+  const loadProfile = async () => {
+    if (!liffProfile?.userId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('line_user_id', liffProfile.userId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('載入個人資料錯誤:', error);
+        return;
+      }
+
+      if (data) {
+        const userProfile = {
+          id: data.id,
+          line_user_id: data.line_user_id,
+          name: data.name || liffProfile.displayName,
+          phone: data.phone || "",
+          email: data.email || "",
+          business_name: data.business_name || "",
+          business_address: data.business_address || "",
+        };
+        setProfile(userProfile);
+        setEditProfile(userProfile);
+      } else {
+        // 如果資料庫中沒有資料，使用 LIFF 資料初始化
+        const userProfile = {
+          name: liffProfile.displayName,
+          phone: "",
+          email: "",
+          business_name: "",
+          business_address: "",
+        };
+        setProfile(userProfile);
+        setEditProfile(userProfile);
+      }
+    } catch (error) {
+      console.error('載入個人資料錯誤:', error);
+    }
+  };
+
   // 使用 LIFF 資料初始化個人資料
   useEffect(() => {
     if (liffProfile && !liffLoading) {
-      const userProfile = {
-        name: liffProfile.displayName,
-        phone: "",
-        email: "",
-        business_name: "",
-        business_address: "",
-      };
-      setProfile(userProfile);
-      setEditProfile(userProfile);
+      loadProfile();
     }
   }, [liffProfile, liffLoading]);
 
   const handleSaveProfile = async () => {
+    if (!liffProfile?.userId) return;
+
     setIsLoading(true);
     try {
-      // 這裡可以將資料保存到本地存儲或其他服務
-      // 由於只使用 LINE 登入，我們將資料保存到 localStorage
       const profileData = {
-        userId: liffProfile?.userId,
+        line_user_id: liffProfile.userId,
+        name: editProfile.name,
+        phone: editProfile.phone,
+        email: editProfile.email,
+        business_name: editProfile.business_name,
+        business_address: editProfile.business_address,
+      };
+
+      // 檢查是否已有資料，決定是新增還是更新
+      const { data: existingData } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('line_user_id', liffProfile.userId)
+        .maybeSingle();
+
+      let result;
+      if (existingData) {
+        // 更新現有資料
+        result = await supabase
+          .from('profiles')
+          .update(profileData)
+          .eq('line_user_id', liffProfile.userId)
+          .select()
+          .single();
+      } else {
+        // 新增資料
+        result = await supabase
+          .from('profiles')
+          .insert(profileData)
+          .select()
+          .single();
+      }
+
+      if (result.error) {
+        throw result.error;
+      }
+
+      const updatedProfile = {
         ...editProfile,
+        id: result.data.id,
+        line_user_id: result.data.line_user_id,
       };
       
-      localStorage.setItem('user_profile', JSON.stringify(profileData));
-      
-      setProfile(editProfile);
+      setProfile(updatedProfile);
       setIsEditing(false);
       toast({
         title: "更新成功",
-        description: "個人資料已更新",
+        description: "個人資料已儲存至資料庫",
       });
     } catch (error) {
       console.error('儲存錯誤:', error);
@@ -79,24 +155,6 @@ const Profile = () => {
       setIsLoading(false);
     }
   };
-
-  // 載入本地保存的資料
-  useEffect(() => {
-    if (liffProfile) {
-      const savedProfile = localStorage.getItem('user_profile');
-      if (savedProfile) {
-        try {
-          const parsedProfile = JSON.parse(savedProfile);
-          if (parsedProfile.userId === liffProfile.userId) {
-            setProfile(parsedProfile);
-            setEditProfile(parsedProfile);
-          }
-        } catch (error) {
-          console.error('載入本地資料錯誤:', error);
-        }
-      }
-    }
-  }, [liffProfile]);
 
   const handleCancelEdit = () => {
     setEditProfile(profile);
