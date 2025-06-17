@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Car, Clock, Hash, X } from "lucide-react";
+import { Car, Clock, Hash, X, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface CallRecord {
@@ -16,6 +15,8 @@ interface CallRecord {
   carTypeLabel: string;
   status: 'waiting' | 'matched' | 'failed' | 'cancelled';
   timestamp: Date;
+  favoriteType: string;
+  favoriteInfo?: string;
 }
 
 const CallCar = () => {
@@ -93,12 +94,23 @@ const CallCar = () => {
     setIsLoading(true);
     
     const selectedCarType = carTypes.find(type => type.id === carType);
+    
+    // Prepare favorite info for display
+    let favoriteInfo = "";
+    if (favoriteType === "code" && selectedCode) {
+      favoriteInfo = selectedCode;
+    } else if (favoriteType === "address" && selectedAddressName) {
+      favoriteInfo = `${selectedAddressName}: ${selectedAddress}`;
+    }
+    
     const newCallRecord: CallRecord = {
       id: Date.now(),
       carType,
       carTypeLabel: selectedCarType?.label || "不限",
       status: 'waiting',
-      timestamp: new Date()
+      timestamp: new Date(),
+      favoriteType,
+      favoriteInfo
     };
 
     setCallRecords(prev => [newCallRecord, ...prev]);
@@ -335,6 +347,23 @@ const CallCar = () => {
                       )}
                     </div>
                   </div>
+                  
+                  {/* Display favorite choice info */}
+                  {record.favoriteInfo && (
+                    <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded">
+                      <div className="flex items-center text-blue-700">
+                        {record.favoriteType === "code" ? (
+                          <Hash className="h-4 w-4 mr-2" />
+                        ) : (
+                          <MapPin className="h-4 w-4 mr-2" />
+                        )}
+                        <span className="text-sm font-medium">
+                          {record.favoriteType === "code" ? "代碼" : "地址"}：
+                        </span>
+                        <span className="text-sm ml-1">{record.favoriteInfo}</span>
+                      </div>
+                    </div>
+                  )}
                   
                   {record.status === 'waiting' && (
                     <div className="mt-3">
