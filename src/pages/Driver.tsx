@@ -1,170 +1,64 @@
 
-import { useState, useEffect } from "react";
-import { useLiff } from "@/contexts/LiffContext";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Car, Phone, MapPin, Clock } from "lucide-react";
-
-interface CallRecord {
-  id: string;
-  carType: string;
-  carTypeLabel: string;
-  status: string;
-  timestamp: Date;
-  favoriteType: string;
-  favoriteInfo?: string;
-}
+import { useState } from "react";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { Car, FileText, CreditCard, User } from "lucide-react";
+import DriverOrders from "@/components/driver/DriverOrders";
+import DriverHistory from "@/components/driver/DriverHistory";
+import DriverEarnings from "@/components/driver/DriverEarnings";
+import Profile from "@/components/Profile";
 
 const Driver = () => {
-  const { profile } = useLiff();
-  const { toast } = useToast();
-  const [orders, setOrders] = useState<CallRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("orders");
 
-  useEffect(() => {
-    loadOrders();
-  }, []);
-
-  const loadOrders = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('call_records')
-        .select('*')
-        .eq('status', 'waiting')
-        .order('created_at', { ascending: true })
-        .limit(10);
-
-      if (error) {
-        console.error('載入訂單錯誤:', error);
-        return;
-      }
-
-      const formattedOrders = (data || []).map(record => ({
-        id: record.id,
-        carType: record.car_type,
-        carTypeLabel: record.car_type_label,
-        status: record.status,
-        timestamp: new Date(record.created_at),
-        favoriteType: record.favorite_type,
-        favoriteInfo: record.favorite_info || undefined,
-      }));
-
-      setOrders(formattedOrders);
-    } catch (error) {
-      console.error('載入訂單錯誤:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const acceptOrder = async (orderId: string) => {
-    if (!profile?.userId) return;
-
-    try {
-      const { error } = await supabase
-        .from('call_records')
-        .update({
-          status: 'matched',
-          driver_id: profile.userId,
-          driver_name: profile.displayName || '司機',
-          driver_phone: '0900-000-000',
-          driver_plate_number: 'ABC-1234',
-          driver_car_brand: 'Toyota',
-          driver_car_color: '白色',
-          accepted_at: new Date().toISOString()
-        })
-        .eq('id', orderId);
-
-      if (error) {
-        console.error('接單錯誤:', error);
-        toast({
-          title: "接單失敗",
-          description: "請稍後再試",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      toast({
-        title: "接單成功",
-        description: "已成功接受訂單",
-      });
-
-      loadOrders();
-    } catch (error) {
-      console.error('接單錯誤:', error);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-center">
-          <Car className="h-12 w-12 text-blue-600 mx-auto mb-4 animate-bounce" />
-          <p className="text-blue-800">載入訂單中...</p>
-        </div>
-      </div>
-    );
-  }
+  const navItems = [
+    { id: "orders", label: "接單", icon: Car, component: DriverOrders },
+    { id: "history", label: "紀錄", icon: FileText, component: DriverHistory },
+    { id: "earnings", label: "收費", icon: CreditCard, component: DriverEarnings },
+    { id: "profile", label: "個資", icon: User, component: Profile },
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container mx-auto px-4 py-6">
-        <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-blue-800 mb-2">司機端</h1>
-          <p className="text-blue-600">歡迎回來，{profile?.displayName}</p>
+      <div className="container mx-auto px-4 pb-20">
+        {/* Header */}
+        <div className="py-6 text-center">
+          <div className="flex items-center justify-center mb-4">
+            <Car className="h-8 w-8 text-blue-600 mr-2" />
+            <h1 className="text-3xl font-bold text-blue-800">司機端</h1>
+          </div>
+          <p className="text-blue-600">開始您的接單服務</p>
         </div>
 
-        <div className="grid gap-4">
-          {orders.length === 0 ? (
-            <Card>
-              <CardContent className="text-center py-8">
-                <Car className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">目前沒有待接訂單</p>
-              </CardContent>
-            </Card>
-          ) : (
-            orders.map((order) => (
-              <Card key={order.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-lg">{order.carTypeLabel}</CardTitle>
-                    <Badge variant="secondary">待接單</Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Clock className="h-4 w-4 mr-2" />
-                      {order.timestamp.toLocaleString('zh-TW')}
-                    </div>
-                    
-                    <div className="flex items-center text-sm text-gray-600">
-                      <MapPin className="h-4 w-4 mr-2" />
-                      {order.favoriteType === 'code' ? `代碼: ${order.favoriteInfo}` : 
-                       order.favoriteType === 'address' ? `地址: ${order.favoriteInfo}` : '現在位置'}
-                    </div>
+        {/* Main Content */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          {navItems.map((item) => (
+            <TabsContent key={item.id} value={item.id} className="mt-0">
+              <item.component />
+            </TabsContent>
+          ))}
+        </Tabs>
 
-                    <div className="flex gap-2 pt-3">
-                      <Button 
-                        onClick={() => acceptOrder(order.id)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white flex-1"
-                      >
-                        <Car className="h-4 w-4 mr-2" />
-                        接受訂單
-                      </Button>
-                      <Button variant="outline" size="icon">
-                        <Phone className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          )}
+        {/* Bottom Navigation */}
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
+          <div className="flex justify-around items-center py-2">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`flex flex-col items-center py-2 px-3 rounded-lg transition-all duration-200 ${
+                    activeTab === item.id
+                      ? "text-blue-600 bg-blue-50"
+                      : "text-gray-500 hover:text-blue-500"
+                  }`}
+                >
+                  <Icon className="h-5 w-5 mb-1" />
+                  <span className="text-xs font-medium">{item.label}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
