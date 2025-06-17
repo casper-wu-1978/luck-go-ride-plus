@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { CallRecord, FavoriteCode, FavoriteAddress } from "@/types/callCar";
 
@@ -112,7 +111,8 @@ export const updateCallRecord = async (
     plateNumber: string;
     carBrand: string;
     carColor: string;
-  }
+  },
+  lineUserId?: string
 ) => {
   const { error } = await supabase
     .from('call_records')
@@ -127,6 +127,51 @@ export const updateCallRecord = async (
     .eq('id', recordId);
 
   if (error) {
+    throw error;
+  }
+
+  // Send LINE notification for matched or failed status
+  if ((status === 'matched' || status === 'failed') && lineUserId) {
+    try {
+      let message = '';
+      if (status === 'matched' && driverInfo) {
+        message = `🚗 叫車成功！\n\n司機資訊：\n姓名：${driverInfo.name}\n電話：${driverInfo.phone}\n車牌：${driverInfo.plateNumber}\n車款：${driverInfo.carBrand} (${driverInfo.carColor})\n\n預計5分鐘後到達，請準備上車！`;
+      } else if (status === 'failed') {
+        message = `❌ 叫車失敗\n\n很抱歉，目前無法找到合適的司機。\n請稍後再試或選擇其他車型。`;
+      }
+
+      if (message) {
+        await supabase.functions.invoke('send-line-notification', {
+          body: {
+            userId: lineUserId,
+            message: message
+          }
+        });
+      }
+    } catch (error) {
+      console.error('發送 LINE 推播錯誤:', error);
+      // Don't throw error here, as the main operation (updating record) was successful
+    }
+  }
+};
+
+export const sendLineNotification = async (lineUserId: string, message: string) => {
+  try {
+    const { data, error } = await supabase.functions.invoke('send-line-notification', {
+      body: {
+        userId: lineUserId,
+        message: message
+      }
+    });
+
+    if (error) {
+      console.error('LINE 推播錯誤:', error);
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('發送 LINE 推播錯誤:', error);
     throw error;
   }
 };

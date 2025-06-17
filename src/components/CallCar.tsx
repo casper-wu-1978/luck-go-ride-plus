@@ -172,7 +172,8 @@ const CallCar = () => {
           await updateCallRecord(
             newCallRecord.id,
             success ? 'matched' : 'failed',
-            driverInfo
+            driverInfo,
+            liffProfile.userId // Pass LINE User ID for notification
           );
 
           setCallRecords(prev => 
