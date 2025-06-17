@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Car, Clock, Hash, X, MapPin } from "lucide-react";
+import { Car, Clock, Hash, X, MapPin, User, Phone, Building } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface CallRecord {
@@ -31,9 +31,10 @@ const CallCar = () => {
 
   // 模擬個資資訊
   const userProfile = {
-    name: "王小明",
+    name: "林小姐",
     phone: "0912-345-678",
-    storeInfo: "小明商店 - 台北市信義區信義路五段7號"
+    businessName: "林記小吃店",
+    businessAddress: "台北市大安區忠孝東路四段123號"
   };
 
   // 模擬常用代碼數據
@@ -345,6 +346,28 @@ const CallCar = () => {
                           取消
                         </Button>
                       )}
+                    </div>
+                  </div>
+                  
+                  {/* User Profile Information */}
+                  <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded">
+                    <div className="grid grid-cols-1 gap-2">
+                      <div className="flex items-center text-green-700">
+                        <User className="h-4 w-4 mr-2" />
+                        <span className="text-sm font-medium">乘客：</span>
+                        <span className="text-sm ml-1">{userProfile.name}</span>
+                        <Phone className="h-4 w-4 ml-4 mr-1" />
+                        <span className="text-sm">{userProfile.phone}</span>
+                      </div>
+                      <div className="flex items-center text-green-700">
+                        <Building className="h-4 w-4 mr-2" />
+                        <span className="text-sm font-medium">上車點：</span>
+                        <span className="text-sm ml-1">{userProfile.businessName}</span>
+                      </div>
+                      <div className="flex items-center text-green-700">
+                        <MapPin className="h-4 w-4 mr-2" />
+                        <span className="text-sm">{userProfile.businessAddress}</span>
+                      </div>
                     </div>
                   </div>
                   
