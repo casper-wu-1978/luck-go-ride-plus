@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Car, Clock, Hash } from "lucide-react";
+import { Car, Clock, Hash, User, Phone, Building } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface CallRecord {
@@ -28,19 +27,12 @@ const CallCar = () => {
   const [callRecords, setCallRecords] = useState<CallRecord[]>([]);
   const { toast } = useToast();
 
-  const carTypes = [
-    { id: "unlimited", label: "不限" },
-    { id: "taxi", label: "小黃" },
-    { id: "diverse", label: "多元" },
-    { id: "private", label: "白牌" },
-    { id: "driver", label: "代駕" },
-  ];
-
-  const favoriteTypes = [
-    { id: "none", label: "無選擇" },
-    { id: "code", label: "代碼" },
-    { id: "address", label: "住址" },
-  ];
+  // 模擬個資資訊
+  const userProfile = {
+    name: "王小明",
+    phone: "0912-345-678",
+    storeInfo: "小明商店 - 台北市信義區信義路五段7號"
+  };
 
   // 模擬常用代碼數據
   const favoriteCodes = [
@@ -53,6 +45,20 @@ const CallCar = () => {
   const favoriteAddresses = [
     { id: 1, name: "家裡", address: "台北市信義區信義路五段7號" },
     { id: 2, name: "公司", address: "台北市松山區敦化北路100號" },
+  ];
+
+  const carTypes = [
+    { id: "unlimited", label: "不限" },
+    { id: "taxi", label: "小黃" },
+    { id: "diverse", label: "多元" },
+    { id: "private", label: "白牌" },
+    { id: "driver", label: "代駕" },
+  ];
+
+  const favoriteTypes = [
+    { id: "none", label: "無選擇" },
+    { id: "code", label: "代碼" },
+    { id: "address", label: "住址" },
   ];
 
   const handleCallCar = async () => {
@@ -272,7 +278,7 @@ const CallCar = () => {
         </CardContent>
       </Card>
 
-      {/* Call Records */}
+      {/* Call Records with Profile Info */}
       {callRecords.length > 0 && (
         <Card>
           <CardHeader>
@@ -282,6 +288,31 @@ const CallCar = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
+            {/* User Profile Section */}
+            <div className="mb-4 p-4 bg-blue-50 rounded-lg border">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                <User className="h-4 w-4 mr-2" />
+                個人資訊
+              </h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center">
+                  <User className="h-4 w-4 mr-2 text-gray-500" />
+                  <span className="text-gray-600">姓名：</span>
+                  <span className="font-medium text-gray-800">{userProfile.name}</span>
+                </div>
+                <div className="flex items-center">
+                  <Phone className="h-4 w-4 mr-2 text-gray-500" />
+                  <span className="text-gray-600">電話：</span>
+                  <span className="font-medium text-gray-800">{userProfile.phone}</span>
+                </div>
+                <div className="flex items-center">
+                  <Building className="h-4 w-4 mr-2 text-gray-500" />
+                  <span className="text-gray-600">店家資訊：</span>
+                  <span className="font-medium text-gray-800">{userProfile.storeInfo}</span>
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-3">
               {callRecords.map((record) => (
                 <div key={record.id} className="p-3 border rounded-lg bg-gray-50">
