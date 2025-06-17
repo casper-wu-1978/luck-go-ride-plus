@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
-import { User, Phone, Mail, Bell, Shield, LogOut, Edit } from "lucide-react";
+import { User, Phone, Mail, Bell, Shield, LogOut, Edit, Building, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const Profile = () => {
@@ -15,6 +15,8 @@ const Profile = () => {
     name: "林小姐",
     phone: "0912-345-678",
     email: "ms.lin@example.com",
+    businessName: "林記小吃店",
+    businessAddress: "台北市大安區忠孝東路四段123號",
   });
   const [editProfile, setEditProfile] = useState(profile);
   const [notifications, setNotifications] = useState(true);
@@ -98,6 +100,24 @@ const Profile = () => {
                 />
               </div>
 
+              <div>
+                <Label htmlFor="businessName">商家名稱</Label>
+                <Input
+                  id="businessName"
+                  value={editProfile.businessName}
+                  onChange={(e) => setEditProfile({...editProfile, businessName: e.target.value})}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="businessAddress">商家住址</Label>
+                <Input
+                  id="businessAddress"
+                  value={editProfile.businessAddress}
+                  onChange={(e) => setEditProfile({...editProfile, businessAddress: e.target.value})}
+                />
+              </div>
+
               <div className="flex space-x-2 pt-2">
                 <Button onClick={handleSaveProfile} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
                   儲存
@@ -132,6 +152,22 @@ const Profile = () => {
                   <p className="font-medium">{profile.email}</p>
                 </div>
               </div>
+
+              <div className="flex items-center">
+                <Building className="h-4 w-4 text-gray-500 mr-3" />
+                <div>
+                  <p className="text-sm text-gray-500">商家名稱</p>
+                  <p className="font-medium">{profile.businessName}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center">
+                <MapPin className="h-4 w-4 text-gray-500 mr-3" />
+                <div>
+                  <p className="text-sm text-gray-500">商家住址</p>
+                  <p className="font-medium">{profile.businessAddress}</p>
+                </div>
+              </div>
             </>
           )}
         </CardContent>
@@ -158,18 +194,6 @@ const Profile = () => {
               checked={notifications}
               onCheckedChange={setNotifications}
             />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Member Info */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="text-center space-y-2">
-            <p className="text-sm text-gray-600">會員等級</p>
-            <div className="inline-block bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-sm font-medium">
-              銀級會員
-            </div>
           </div>
         </CardContent>
       </Card>
