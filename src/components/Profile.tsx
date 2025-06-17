@@ -8,19 +8,36 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
 import { User, Phone, Mail, Bell, Shield, LogOut, Edit, Building, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useLiff } from "@/contexts/LiffContext";
+import { closeLiff } from "@/lib/liff";
 
 const Profile = () => {
+  const { profile: liffProfile, isLoading } = useLiff();
   const [isEditing, setIsEditing] = useState(false);
   const [profile, setProfile] = useState({
-    name: "林小姐",
+    name: "",
     phone: "0912-345-678",
-    email: "ms.lin@example.com",
-    businessName: "林記小吃店",
+    email: "user@example.com",
+    businessName: "商家名稱",
     businessAddress: "台北市大安區忠孝東路四段123號",
   });
   const [editProfile, setEditProfile] = useState(profile);
   const [notifications, setNotifications] = useState(true);
   const { toast } = useToast();
+
+  // 使用 LIFF 資料更新本地資料
+  React.useEffect(() => {
+    if (liffProfile) {
+      setProfile(prev => ({
+        ...prev,
+        name: liffProfile.displayName,
+      }));
+      setEditProfile(prev => ({
+        ...prev,
+        name: liffProfile.displayName,
+      }));
+    }
+  }, [liffProfile]);
 
   const handleSaveProfile = () => {
     setProfile(editProfile);
@@ -36,19 +53,40 @@ const Profile = () => {
     setIsEditing(false);
   };
 
+  const handleLogout = () => {
+    closeLiff();
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">載入中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const displayName = liffProfile?.displayName || profile.name || "用戶";
+  const avatarUrl = liffProfile?.pictureUrl;
+
   return (
     <div className="space-y-6">
       {/* Profile Header */}
       <Card className="bg-gradient-to-r from-indigo-500 to-purple-600 text-white border-0">
         <CardContent className="p-6 text-center">
           <Avatar className="h-20 w-20 mx-auto mb-4 border-4 border-white/20">
-            <AvatarImage src="/placeholder.svg" />
+            <AvatarImage src={avatarUrl || "/placeholder.svg"} />
             <AvatarFallback className="text-2xl font-bold bg-white/20 text-white">
-              林
+              {displayName.charAt(0)}
             </AvatarFallback>
           </Avatar>
-          <h2 className="text-xl font-bold mb-1">{profile.name}</h2>
-          <p className="opacity-90">商家用戶</p>
+          <h2 className="text-xl font-bold mb-1">{displayName}</h2>
+          <p className="opacity-90">LINE 用戶</p>
+          {liffProfile?.userId && (
+            <p className="text-sm opacity-75 mt-1">ID: {liffProfile.userId.slice(-8)}</p>
+          )}
         </CardContent>
       </Card>
 
@@ -73,12 +111,14 @@ const Profile = () => {
           {isEditing ? (
             <>
               <div>
-                <Label htmlFor="name">姓名</Label>
+                <Label htmlFor="name">姓名 (來自 LINE)</Label>
                 <Input
                   id="name"
-                  value={editProfile.name}
-                  onChange={(e) => setEditProfile({...editProfile, name: e.target.value})}
+                  value={displayName}
+                  disabled
+                  className="bg-gray-100"
                 />
+                <p className="text-xs text-gray-500 mt-1">此資料來自 LINE，無法修改</p>
               </div>
               
               <div>
@@ -132,8 +172,8 @@ const Profile = () => {
               <div className="flex items-center">
                 <User className="h-4 w-4 text-gray-500 mr-3" />
                 <div>
-                  <p className="text-sm text-gray-500">姓名</p>
-                  <p className="font-medium">{profile.name}</p>
+                  <p className="text-sm text-gray-500">姓名 (來自 LINE)</p>
+                  <p className="font-medium">{displayName}</p>
                 </div>
               </div>
               
@@ -198,13 +238,14 @@ const Profile = () => {
         </CardContent>
       </Card>
 
-      {/* Logout */}
+      {/* Close LIFF */}
       <Button 
         variant="outline" 
         className="w-full text-red-600 border-red-200 hover:bg-red-50"
+        onClick={handleLogout}
       >
         <LogOut className="h-4 w-4 mr-2" />
-        登出
+        關閉應用
       </Button>
     </div>
   );
