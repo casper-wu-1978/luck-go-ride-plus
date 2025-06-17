@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -8,9 +9,11 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Car, Clock, Hash, X, MapPin, User, Phone, Building } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useLiff } from "@/contexts/LiffContext";
+import { supabase } from "@/integrations/supabase/client";
 
 interface CallRecord {
-  id: number;
+  id: string;
   carType: string;
   carTypeLabel: string;
   status: 'waiting' | 'matched' | 'failed' | 'cancelled';
@@ -27,6 +30,7 @@ interface CallRecord {
 }
 
 const CallCar = () => {
+  const { profile: liffProfile } = useLiff();
   const [isLoading, setIsLoading] = useState(false);
   const [carType, setCarType] = useState("unlimited");
   const [favoriteType, setFavoriteType] = useState("none");
@@ -34,6 +38,8 @@ const CallCar = () => {
   const [selectedAddressName, setSelectedAddressName] = useState("");
   const [selectedAddress, setSelectedAddress] = useState("");
   const [callRecords, setCallRecords] = useState<CallRecord[]>([]);
+  const [favoriteCodes, setFavoriteCodes] = useState<Array<{id: string, label: string}>>([]);
+  const [favoriteAddresses, setFavoriteAddresses] = useState<Array<{id: number, name: string, address: string}>>([]);
   const { toast } = useToast();
 
   // 模擬個資資訊
@@ -43,19 +49,6 @@ const CallCar = () => {
     businessName: "林記小吃店",
     businessAddress: "台北市大安區忠孝東路四段123號"
   };
-
-  // 模擬常用代碼數據
-  const favoriteCodes = [
-    { id: "A101", label: "A101" },
-    { id: "B302", label: "B302" },
-    { id: "VIP包廂", label: "VIP包廂" },
-  ];
-
-  // 模擬常用地址數據
-  const favoriteAddresses = [
-    { id: 1, name: "家裡", address: "台北市信義區信義路五段7號" },
-    { id: 2, name: "公司", address: "台北市松山區敦化北路100號" },
-  ];
 
   const carTypes = [
     { id: "unlimited", label: "不限" },
@@ -71,7 +64,96 @@ const CallCar = () => {
     { id: "address", label: "住址" },
   ];
 
+  // 載入常用地址和代碼
+  const loadFavorites = async () => {
+    if (!liffProfile?.userId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('favorite_addresses')
+        .select('*')
+        .eq('line_user_id', liffProfile.userId);
+
+      if (error) {
+        console.error('載入常用資料錯誤:', error);
+        return;
+      }
+
+      const codes: Array<{id: string, label: string}> = [];
+      const addresses: Array<{id: number, name: string, address: string}> = [];
+
+      data?.forEach(item => {
+        if (item.address_type === 'code' && item.code) {
+          codes.push({ id: item.code, label: item.code });
+        } else if (item.address_type === 'address' && item.address) {
+          addresses.push({ id: parseInt(item.id), name: item.name, address: item.address });
+        }
+      });
+
+      setFavoriteCodes(codes);
+      setFavoriteAddresses(addresses);
+    } catch (error) {
+      console.error('載入常用資料錯誤:', error);
+    }
+  };
+
+  // 載入叫車記錄
+  const loadCallRecords = async () => {
+    if (!liffProfile?.userId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('call_records')
+        .select('*')
+        .eq('line_user_id', liffProfile.userId)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) {
+        console.error('載入叫車記錄錯誤:', error);
+        return;
+      }
+
+      const formattedRecords: CallRecord[] = (data || []).map(record => ({
+        id: record.id,
+        carType: record.car_type,
+        carTypeLabel: record.car_type_label,
+        status: record.status as 'waiting' | 'matched' | 'failed' | 'cancelled',
+        timestamp: new Date(record.created_at),
+        favoriteType: record.favorite_type,
+        favoriteInfo: record.favorite_info || undefined,
+        driverInfo: record.driver_name ? {
+          name: record.driver_name,
+          phone: record.driver_phone || '',
+          plateNumber: record.driver_plate_number || '',
+          carBrand: record.driver_car_brand || '',
+          carColor: record.driver_car_color || ''
+        } : undefined
+      }));
+
+      setCallRecords(formattedRecords);
+    } catch (error) {
+      console.error('載入叫車記錄錯誤:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (liffProfile?.userId) {
+      loadFavorites();
+      loadCallRecords();
+    }
+  }, [liffProfile]);
+
   const handleCallCar = async () => {
+    if (!liffProfile?.userId) {
+      toast({
+        title: "請先登入",
+        description: "需要登入才能叫車",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (favoriteType === "code" && !selectedCode) {
       toast({
         title: "請選擇代碼",
@@ -111,69 +193,149 @@ const CallCar = () => {
       favoriteInfo = `${selectedAddressName}: ${selectedAddress}`;
     }
     
-    const newCallRecord: CallRecord = {
-      id: Date.now(),
-      carType,
-      carTypeLabel: selectedCarType?.label || "不限",
-      status: 'waiting',
-      timestamp: new Date(),
-      favoriteType,
-      favoriteInfo
-    };
+    try {
+      // 插入新的叫車記錄到資料庫
+      const { data: newRecord, error } = await supabase
+        .from('call_records')
+        .insert({
+          line_user_id: liffProfile.userId,
+          car_type: carType,
+          car_type_label: selectedCarType?.label || "不限",
+          status: 'waiting',
+          favorite_type: favoriteType,
+          favorite_info: favoriteInfo || null
+        })
+        .select()
+        .single();
 
-    setCallRecords(prev => [newCallRecord, ...prev]);
-    
-    // 模擬叫車過程
-    setTimeout(() => {
-      const success = Math.random() > 0.3; // 70% 成功率
+      if (error) {
+        console.error('插入叫車記錄錯誤:', error);
+        toast({
+          title: "叫車失敗",
+          description: "無法儲存叫車記錄",
+          variant: "destructive"
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      const newCallRecord: CallRecord = {
+        id: newRecord.id,
+        carType: newRecord.car_type,
+        carTypeLabel: newRecord.car_type_label,
+        status: newRecord.status as 'waiting' | 'matched' | 'failed' | 'cancelled',
+        timestamp: new Date(newRecord.created_at),
+        favoriteType: newRecord.favorite_type,
+        favoriteInfo: newRecord.favorite_info || undefined
+      };
+
+      setCallRecords(prev => [newCallRecord, ...prev.slice(0, 9)]);
       
-      // Generate mock driver info if successful
-      const driverInfo = success ? {
-        name: "王師傅",
-        phone: "0987-654-321",
-        plateNumber: "ABC-1234",
-        carBrand: "Toyota",
-        carColor: "白色"
-      } : undefined;
-      
+      // 模擬叫車過程
+      setTimeout(async () => {
+        const success = Math.random() > 0.3; // 70% 成功率
+        
+        // Generate mock driver info if successful
+        const driverInfo = success ? {
+          name: "王師傅",
+          phone: "0987-654-321",
+          plateNumber: "ABC-1234",
+          carBrand: "Toyota",
+          carColor: "白色"
+        } : undefined;
+        
+        try {
+          // 更新資料庫中的記錄狀態
+          const { error: updateError } = await supabase
+            .from('call_records')
+            .update({
+              status: success ? 'matched' : 'failed',
+              driver_name: driverInfo?.name || null,
+              driver_phone: driverInfo?.phone || null,
+              driver_plate_number: driverInfo?.plateNumber || null,
+              driver_car_brand: driverInfo?.carBrand || null,
+              driver_car_color: driverInfo?.carColor || null
+            })
+            .eq('id', newRecord.id);
+
+          if (updateError) {
+            console.error('更新叫車記錄錯誤:', updateError);
+          }
+
+          setCallRecords(prev => 
+            prev.map(record => 
+              record.id === newRecord.id 
+                ? { ...record, status: success ? 'matched' : 'failed', driverInfo }
+                : record
+            )
+          );
+
+          if (success) {
+            toast({
+              title: "叫車成功！",
+              description: `已媒合${selectedCarType?.label}司機，預計5分鐘後到達`,
+            });
+          } else {
+            toast({
+              title: "叫車失敗",
+              description: "未能找到合適的司機，請稍後再試",
+              variant: "destructive"
+            });
+          }
+        } catch (error) {
+          console.error('更新叫車記錄錯誤:', error);
+        }
+        
+        setIsLoading(false);
+      }, 3000);
+    } catch (error) {
+      console.error('叫車錯誤:', error);
+      toast({
+        title: "叫車失敗",
+        description: "發生未知錯誤",
+        variant: "destructive"
+      });
+      setIsLoading(false);
+    }
+  };
+
+  const handleCancelCall = async (recordId: string) => {
+    try {
+      const { error } = await supabase
+        .from('call_records')
+        .update({ status: 'cancelled' })
+        .eq('id', recordId);
+
+      if (error) {
+        console.error('取消叫車錯誤:', error);
+        toast({
+          title: "取消失敗",
+          description: "無法取消叫車",
+          variant: "destructive"
+        });
+        return;
+      }
+
       setCallRecords(prev => 
         prev.map(record => 
-          record.id === newCallRecord.id 
-            ? { ...record, status: success ? 'matched' : 'failed', driverInfo }
+          record.id === recordId 
+            ? { ...record, status: 'cancelled' }
             : record
         )
       );
 
-      if (success) {
-        toast({
-          title: "叫車成功！",
-          description: `已媒合${selectedCarType?.label}司機，預計5分鐘後到達`,
-        });
-      } else {
-        toast({
-          title: "叫車失敗",
-          description: "未能找到合適的司機，請稍後再試",
-          variant: "destructive"
-        });
-      }
-      
-      setIsLoading(false);
-    }, 3000);
-  };
-
-  const handleCancelCall = (recordId: number) => {
-    setCallRecords(prev => 
-      prev.map(record => 
-        record.id === recordId 
-          ? { ...record, status: 'cancelled' }
-          : record
-      )
-    );
-
-    toast({
-      title: "已取消叫車",
-      description: "您的叫車請求已成功取消",
-    });
+      toast({
+        title: "已取消叫車",
+        description: "您的叫車請求已成功取消",
+      });
+    } catch (error) {
+      console.error('取消叫車錯誤:', error);
+      toast({
+        title: "取消失敗",
+        description: "發生未知錯誤",
+        variant: "destructive"
+      });
+    }
   };
 
   const getStatusText = (status: string) => {

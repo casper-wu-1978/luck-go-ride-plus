@@ -9,6 +9,57 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      call_records: {
+        Row: {
+          car_type: string
+          car_type_label: string
+          created_at: string
+          driver_car_brand: string | null
+          driver_car_color: string | null
+          driver_name: string | null
+          driver_phone: string | null
+          driver_plate_number: string | null
+          favorite_info: string | null
+          favorite_type: string
+          id: string
+          line_user_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          car_type: string
+          car_type_label: string
+          created_at?: string
+          driver_car_brand?: string | null
+          driver_car_color?: string | null
+          driver_name?: string | null
+          driver_phone?: string | null
+          driver_plate_number?: string | null
+          favorite_info?: string | null
+          favorite_type: string
+          id?: string
+          line_user_id: string
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          car_type?: string
+          car_type_label?: string
+          created_at?: string
+          driver_car_brand?: string | null
+          driver_car_color?: string | null
+          driver_name?: string | null
+          driver_phone?: string | null
+          driver_plate_number?: string | null
+          favorite_info?: string | null
+          favorite_type?: string
+          id?: string
+          line_user_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       favorite_addresses: {
         Row: {
           address: string | null
