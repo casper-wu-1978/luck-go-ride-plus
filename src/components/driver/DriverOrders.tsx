@@ -26,13 +26,25 @@ const DriverOrders = () => {
   const [isOnline, setIsOnline] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<string>("");
   const [isGettingLocation, setIsGettingLocation] = useState(false);
-
-  // Your Mapbox API key
-  const MAPBOX_TOKEN = "pk.eyJ1IjoiY2FzcGVyNjciLCJhIjoiY205Y2FoMDIyMHNpYjJ5b2V5dGE2MmJnbyJ9.yzckI6SXN3-Fl_5-llEYzQ";
+  const [mapboxToken, setMapboxToken] = useState<string>("");
 
   useEffect(() => {
     loadOrders();
+    loadMapboxToken();
   }, []);
+
+  const loadMapboxToken = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('get-mapbox-token');
+      if (error) {
+        console.error('無法獲取 Mapbox token:', error);
+        return;
+      }
+      setMapboxToken(data.token);
+    } catch (error) {
+      console.error('載入 Mapbox token 錯誤:', error);
+    }
+  };
 
   const loadOrders = async () => {
     try {
@@ -67,6 +79,15 @@ const DriverOrders = () => {
   };
 
   const getCurrentLocation = async () => {
+    if (!mapboxToken) {
+      toast({
+        title: "定位失敗",
+        description: "Mapbox 服務尚未初始化",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsGettingLocation(true);
     try {
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
@@ -81,7 +102,7 @@ const DriverOrders = () => {
       
       // 使用 Mapbox 反向地理編碼獲取地址
       const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${MAPBOX_TOKEN}&language=zh-TW`
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${mapboxToken}&language=zh-TW`
       );
       
       if (response.ok) {
