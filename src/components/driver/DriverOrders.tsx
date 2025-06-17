@@ -6,7 +6,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Car, Phone, MapPin, Clock } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Car, Phone, MapPin, Clock, Navigation } from "lucide-react";
 
 interface CallRecord {
   id: string;
@@ -23,6 +24,9 @@ const DriverOrders = () => {
   const { toast } = useToast();
   const [orders, setOrders] = useState<CallRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isOnline, setIsOnline] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState<string>("");
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
 
   useEffect(() => {
     loadOrders();
@@ -60,8 +64,73 @@ const DriverOrders = () => {
     }
   };
 
+  const getCurrentLocation = async () => {
+    setIsGettingLocation(true);
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 600000
+        });
+      });
+
+      const { latitude, longitude } = position.coords;
+      
+      // 使用反向地理編碼獲取地址
+      const response = await fetch(
+        `https://api.opencagedata.com/geocode/v1/json?q=${latitude}+${longitude}&key=YOUR_API_KEY&language=zh-tw`
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.results && data.results.length > 0) {
+          setCurrentLocation(data.results[0].formatted);
+        } else {
+          setCurrentLocation(`緯度: ${latitude.toFixed(6)}, 經度: ${longitude.toFixed(6)}`);
+        }
+      } else {
+        setCurrentLocation(`緯度: ${latitude.toFixed(6)}, 經度: ${longitude.toFixed(6)}`);
+      }
+
+      toast({
+        title: "定位成功",
+        description: "已獲取您的當前位置",
+      });
+    } catch (error) {
+      console.error('定位錯誤:', error);
+      setCurrentLocation("無法獲取位置");
+      toast({
+        title: "定位失敗",
+        description: "請檢查定位權限設定",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGettingLocation(false);
+    }
+  };
+
+  const handleOnlineToggle = async (checked: boolean) => {
+    if (checked) {
+      await getCurrentLocation();
+    }
+    setIsOnline(checked);
+    
+    toast({
+      title: checked ? "已上線" : "已下線",
+      description: checked ? "開始接收訂單通知" : "停止接收訂單通知",
+    });
+  };
+
   const acceptOrder = async (orderId: string) => {
-    if (!profile?.userId) return;
+    if (!profile?.userId || !isOnline) {
+      toast({
+        title: "無法接單",
+        description: isOnline ? "請先上線" : "系統錯誤",
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       const { error } = await supabase
@@ -112,6 +181,46 @@ const DriverOrders = () => {
 
   return (
     <div className="space-y-4">
+      {/* 上線狀態控制 */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-3">
+              <div className={`w-3 h-3 rounded-full ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`}></div>
+              <span className="font-medium">{isOnline ? '已上線' : '離線'}</span>
+            </div>
+            <Switch
+              checked={isOnline}
+              onCheckedChange={handleOnlineToggle}
+              disabled={isGettingLocation}
+            />
+          </div>
+          
+          {isOnline && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">當前位置</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={getCurrentLocation}
+                  disabled={isGettingLocation}
+                >
+                  <Navigation className="h-4 w-4 mr-1" />
+                  {isGettingLocation ? '定位中...' : '重新定位'}
+                </Button>
+              </div>
+              <div className="flex items-start space-x-2">
+                <MapPin className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <span className="text-sm text-gray-800 break-words">
+                  {currentLocation || '獲取位置中...'}
+                </span>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       <div className="text-center mb-6">
         <h2 className="text-xl font-bold text-blue-800 mb-2">待接訂單</h2>
         <p className="text-blue-600">共 {orders.length} 筆待接訂單</p>
@@ -150,10 +259,11 @@ const DriverOrders = () => {
                 <div className="flex gap-2 pt-3">
                   <Button 
                     onClick={() => acceptOrder(order.id)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white flex-1"
+                    disabled={!isOnline}
+                    className="bg-blue-600 hover:bg-blue-700 text-white flex-1 disabled:opacity-50"
                   >
                     <Car className="h-4 w-4 mr-2" />
-                    接受訂單
+                    {!isOnline ? '請先上線' : '接受訂單'}
                   </Button>
                   <Button variant="outline" size="icon">
                     <Phone className="h-4 w-4" />
