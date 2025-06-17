@@ -38,9 +38,14 @@ const Profile = () => {
 
   // 從資料庫載入個人資料
   const loadProfile = async () => {
-    if (!liffProfile?.userId) return;
+    if (!liffProfile?.userId) {
+      console.error('LIFF profile or userId not available');
+      return;
+    }
 
     try {
+      console.log('Loading profile for user:', liffProfile.userId);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -49,8 +54,15 @@ const Profile = () => {
 
       if (error) {
         console.error('載入個人資料錯誤:', error);
+        toast({
+          title: "載入失敗",
+          description: `載入個人資料時發生錯誤: ${error.message}`,
+          variant: "destructive",
+        });
         return;
       }
+
+      console.log('Profile data from database:', data);
 
       if (data) {
         const userProfile: UserProfile = {
@@ -77,6 +89,11 @@ const Profile = () => {
       }
     } catch (error) {
       console.error('載入個人資料錯誤:', error);
+      toast({
+        title: "載入失敗",
+        description: "發生未知錯誤",
+        variant: "destructive",
+      });
     }
   };
 
@@ -88,29 +105,58 @@ const Profile = () => {
   }, [liffProfile, liffLoading]);
 
   const handleSaveProfile = async () => {
-    if (!liffProfile?.userId) return;
+    if (!liffProfile?.userId) {
+      toast({
+        title: "儲存失敗",
+        description: "無法取得用戶ID",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!editProfile.name.trim()) {
+      toast({
+        title: "儲存失敗",
+        description: "姓名不能為空",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setIsLoading(true);
     try {
+      console.log('Saving profile for user:', liffProfile.userId);
+      console.log('Profile data to save:', editProfile);
+
       const profileData = {
         user_id: liffProfile.userId,
-        name: editProfile.name,
-        phone: editProfile.phone,
-        email: editProfile.email,
-        business_name: editProfile.business_name,
-        business_address: editProfile.business_address,
+        name: editProfile.name.trim(),
+        phone: editProfile.phone.trim(),
+        email: editProfile.email.trim(),
+        business_name: editProfile.business_name.trim(),
+        business_address: editProfile.business_address.trim(),
       };
 
+      console.log('Formatted profile data:', profileData);
+
       // 檢查是否已有資料，決定是新增還是更新
-      const { data: existingData } = await supabase
+      const { data: existingData, error: checkError } = await supabase
         .from('profiles')
         .select('id')
         .eq('user_id', liffProfile.userId)
         .maybeSingle();
 
+      if (checkError) {
+        console.error('檢查現有資料錯誤:', checkError);
+        throw checkError;
+      }
+
+      console.log('Existing data check:', existingData);
+
       let result;
       if (existingData) {
         // 更新現有資料
+        console.log('Updating existing profile');
         result = await supabase
           .from('profiles')
           .update(profileData)
@@ -119,6 +165,7 @@ const Profile = () => {
           .single();
       } else {
         // 新增資料
+        console.log('Inserting new profile');
         result = await supabase
           .from('profiles')
           .insert(profileData)
@@ -126,7 +173,10 @@ const Profile = () => {
           .single();
       }
 
+      console.log('Save result:', result);
+
       if (result.error) {
+        console.error('儲存錯誤:', result.error);
         throw result.error;
       }
 
@@ -145,11 +195,11 @@ const Profile = () => {
         title: "更新成功",
         description: "個人資料已儲存至資料庫",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('儲存錯誤:', error);
       toast({
         title: "儲存失敗",
-        description: "發生未知錯誤",
+        description: `儲存時發生錯誤: ${error.message || '未知錯誤'}`,
         variant: "destructive",
       });
     } finally {
@@ -158,7 +208,6 @@ const Profile = () => {
   };
 
   const handleCancelEdit = () => {
-    setProfile({ ...profile });
     setEditProfile({ ...profile });
     setIsEditing(false);
   };
@@ -222,11 +271,12 @@ const Profile = () => {
           {isEditing ? (
             <>
               <div>
-                <Label htmlFor="name">姓名</Label>
+                <Label htmlFor="name">姓名 *</Label>
                 <Input
                   id="name"
                   value={editProfile.name}
                   onChange={(e) => setEditProfile({...editProfile, name: e.target.value})}
+                  placeholder="請輸入姓名"
                 />
               </div>
               
@@ -236,6 +286,7 @@ const Profile = () => {
                   id="phone"
                   value={editProfile.phone}
                   onChange={(e) => setEditProfile({...editProfile, phone: e.target.value})}
+                  placeholder="請輸入電話號碼"
                 />
               </div>
               
@@ -246,6 +297,7 @@ const Profile = () => {
                   type="email"
                   value={editProfile.email}
                   onChange={(e) => setEditProfile({...editProfile, email: e.target.value})}
+                  placeholder="請輸入電子郵件"
                 />
               </div>
 
@@ -255,6 +307,7 @@ const Profile = () => {
                   id="businessName"
                   value={editProfile.business_name}
                   onChange={(e) => setEditProfile({...editProfile, business_name: e.target.value})}
+                  placeholder="請輸入商家名稱"
                 />
               </div>
 
@@ -264,6 +317,7 @@ const Profile = () => {
                   id="businessAddress"
                   value={editProfile.business_address}
                   onChange={(e) => setEditProfile({...editProfile, business_address: e.target.value})}
+                  placeholder="請輸入商家住址"
                 />
               </div>
 
