@@ -20,8 +20,8 @@ const Index = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 flex flex-col">
-      <div className="container mx-auto max-w-md px-4 pb-20 flex-1 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100">
+      <div className="container mx-auto px-4 pb-20">
         {/* Header */}
         <div className="py-6 text-center">
           <h1 className="text-3xl font-bold text-emerald-800 mb-2">Luck Go</h1>
@@ -29,19 +29,17 @@ const Index = () => {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col justify-center">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            {navItems.map((item) => (
-              <TabsContent key={item.id} value={item.id} className="mt-0">
-                <item.component />
-              </TabsContent>
-            ))}
-          </Tabs>
-        </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          {navItems.map((item) => (
+            <TabsContent key={item.id} value={item.id} className="mt-0">
+              <item.component />
+            </TabsContent>
+          ))}
+        </Tabs>
 
         {/* Bottom Navigation */}
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
-          <div className="flex justify-around items-center py-2 max-w-md mx-auto">
+          <div className="flex justify-around items-center py-2">
             {navItems.map((item) => {
               const Icon = item.icon;
               return (
