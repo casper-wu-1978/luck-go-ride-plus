@@ -52,9 +52,22 @@ const isDevelopment = () => {
 // 開發模式的模擬資料
 const mockProfile: LiffProfile = {
   userId: 'U12345678901234567890123456789012',
-  displayName: '測試用戶',
-  pictureUrl: 'https://via.placeholder.com/150/4A90E2/FFFFFF?text=Test',
-  statusMessage: '開發模式測試用戶'
+  displayName: '測試司機',
+  pictureUrl: 'https://via.placeholder.com/150/4A90E2/FFFFFF?text=Driver',
+  statusMessage: '開發模式測試司機用戶'
+};
+
+// 根據當前路徑決定使用哪個 LIFF ID
+const getLiffId = () => {
+  const currentPath = window.location.pathname;
+  
+  // 司機端使用司機專用的 LIFF ID
+  if (currentPath.includes('/driver')) {
+    return '2007590095-p2AoOLKO';
+  }
+  
+  // 其他頁面使用預設的 LIFF ID
+  return '2007590095-84XDyloy';
 };
 
 export const initializeLiff = async (): Promise<boolean> => {
@@ -68,9 +81,12 @@ export const initializeLiff = async (): Promise<boolean> => {
 
     console.log('📱 正式環境：初始化 LIFF');
     
+    const liffId = getLiffId();
+    console.log('使用 LIFF ID:', liffId);
+    
     // LIFF ID from LINE Developers Console
     await liff.init({ 
-      liffId: '2007590095-84XDyloy',
+      liffId: liffId,
       withLoginOnExternalBrowser: true
     });
     
@@ -116,7 +132,7 @@ export const getLiffProfile = async (): Promise<LiffProfile | null> => {
     const isDevMode = isDevelopment();
     
     if (isDevMode) {
-      console.log('🛠️ 開發模式：返回模擬用戶資料');
+      console.log('🛠️ 開發模式：返回模擬司機用戶資料');
       return mockProfile;
     }
 
