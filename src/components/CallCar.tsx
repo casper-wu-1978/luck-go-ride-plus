@@ -55,7 +55,7 @@ const CallCar = () => {
                 <div key={type.id} className="flex items-center space-x-2">
                   <RadioGroupItem value={type.id} id={type.id} />
                   <Label htmlFor={type.id} className="text-sm cursor-pointer">
-                    {type.isDefault ? `●${type.label}` : `○${type.label}`}
+                    {type.label}
                   </Label>
                 </div>
               ))}
