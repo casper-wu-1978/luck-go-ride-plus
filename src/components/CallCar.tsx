@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Car, Clock, Hash, User, Phone, Building } from "lucide-react";
+import { Car, Clock, Hash } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface CallRecord {
@@ -278,7 +278,7 @@ const CallCar = () => {
         </CardContent>
       </Card>
 
-      {/* Call Records with Profile Info */}
+      {/* Call Records */}
       {callRecords.length > 0 && (
         <Card>
           <CardHeader>
@@ -288,31 +288,6 @@ const CallCar = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {/* User Profile Section */}
-            <div className="mb-4 p-4 bg-blue-50 rounded-lg border">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                <User className="h-4 w-4 mr-2" />
-                個人資訊
-              </h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center">
-                  <User className="h-4 w-4 mr-2 text-gray-500" />
-                  <span className="text-gray-600">姓名：</span>
-                  <span className="font-medium text-gray-800">{userProfile.name}</span>
-                </div>
-                <div className="flex items-center">
-                  <Phone className="h-4 w-4 mr-2 text-gray-500" />
-                  <span className="text-gray-600">電話：</span>
-                  <span className="font-medium text-gray-800">{userProfile.phone}</span>
-                </div>
-                <div className="flex items-center">
-                  <Building className="h-4 w-4 mr-2 text-gray-500" />
-                  <span className="text-gray-600">店家資訊：</span>
-                  <span className="font-medium text-gray-800">{userProfile.storeInfo}</span>
-                </div>
-              </div>
-            </div>
-
             <div className="space-y-3">
               {callRecords.map((record) => (
                 <div key={record.id} className="p-3 border rounded-lg bg-gray-50">
