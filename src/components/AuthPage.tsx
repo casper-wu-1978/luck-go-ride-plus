@@ -1,20 +1,30 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { Mail, Lock, User, ArrowRight } from 'lucide-react';
+import { useAdminAuth } from '@/contexts/AdminAuthContext';
+import { Mail, Lock, User, ArrowRight, Shield } from 'lucide-react';
 
 const AuthPage = () => {
+  const navigate = useNavigate();
+  const { user, isLoading, signIn, signUp } = useAdminAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+
+  // 如果已登入，導向管理頁面
+  useEffect(() => {
+    if (user && !isLoading) {
+      navigate('/admin');
+    }
+  }, [user, isLoading, navigate]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,10 +33,7 @@ const AuthPage = () => {
     try {
       if (isLogin) {
         // 登入
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+        const { error } = await signIn(email, password);
 
         if (error) {
           toast({
@@ -39,19 +46,11 @@ const AuthPage = () => {
             title: "登入成功",
             description: "歡迎回來！",
           });
+          navigate('/admin');
         }
       } else {
         // 註冊
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-            data: {
-              name: name,
-            }
-          }
-        });
+        const { error } = await signUp(email, password, name);
 
         if (error) {
           toast({
@@ -77,20 +76,36 @@ const AuthPage = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <Shield className="h-12 w-12 text-purple-600 mx-auto mb-4 animate-pulse" />
+          <p className="text-purple-800">載入中...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-emerald-800 mb-2">Luck Go</h1>
-          <p className="text-emerald-600">您的專屬叫車平台</p>
+          <div className="flex items-center justify-center mb-4">
+            <Shield className="h-12 w-12 text-purple-600 mr-3" />
+            <div>
+              <h1 className="text-4xl font-bold text-purple-800">Luck Go</h1>
+              <p className="text-purple-600">管理員系統</p>
+            </div>
+          </div>
         </div>
 
         {/* Auth Form */}
         <Card className="border-0 shadow-xl">
           <CardHeader>
             <CardTitle className="text-center text-2xl font-bold text-gray-800">
-              {isLogin ? '登入帳戶' : '建立帳戶'}
+              {isLogin ? '管理員登入' : '建立管理員帳戶'}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -148,7 +163,7 @@ const AuthPage = () => {
 
               <Button 
                 type="submit" 
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3"
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3"
                 disabled={loading}
               >
                 {loading ? (
@@ -169,7 +184,7 @@ const AuthPage = () => {
               <Button 
                 variant="ghost" 
                 onClick={() => setIsLogin(!isLogin)}
-                className="text-emerald-600 hover:text-emerald-800"
+                className="text-purple-600 hover:text-purple-800"
               >
                 {isLogin ? '還沒有帳戶？立即註冊' : '已有帳戶？立即登入'}
               </Button>
@@ -178,9 +193,20 @@ const AuthPage = () => {
         </Card>
 
         {/* Demo Info */}
-        <div className="mt-6 text-center text-sm text-emerald-700">
-          <p>測試帳戶：demo@example.com</p>
+        <div className="mt-6 text-center text-sm text-purple-700">
+          <p>測試帳戶：admin@luckgo.com</p>
           <p>密碼：123456</p>
+        </div>
+
+        {/* Back to Main */}
+        <div className="mt-4 text-center">
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/')}
+            className="border-purple-300 text-purple-700 hover:bg-purple-50"
+          >
+            返回首頁
+          </Button>
         </div>
       </div>
     </div>

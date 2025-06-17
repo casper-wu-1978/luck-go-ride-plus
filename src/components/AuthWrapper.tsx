@@ -1,6 +1,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { useLiff } from '@/contexts/LiffContext';
+import { useUserRole } from '@/hooks/useUserRole';
+import { useLocation } from 'react-router-dom';
+import AuthPage from './AuthPage';
 
 interface AuthWrapperProps {
   children: React.ReactNode;
@@ -8,6 +11,8 @@ interface AuthWrapperProps {
 
 const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
   const { profile, isLoading, isLiffReady } = useLiff();
+  const { userRole } = useUserRole();
+  const location = useLocation();
   const [showDevInfo, setShowDevInfo] = useState(false);
 
   // 檢測是否為開發環境
@@ -16,12 +21,21 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
     window.location.hostname.includes('lovableproject.com') ||
     window.location.hostname.includes('lovable.app');
 
+  // 檢查是否在管理員頁面
+  const isAdminRoute = location.pathname.startsWith('/admin');
+
   useEffect(() => {
     if (isDevelopment) {
       setShowDevInfo(true);
     }
   }, [isDevelopment]);
 
+  // 如果是管理員路由，使用 email 認證
+  if (isAdminRoute) {
+    return <AuthPage />;
+  }
+
+  // 對於商家和司機，使用 LIFF 認證
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 flex items-center justify-center">

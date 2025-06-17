@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { LiffProvider } from "@/contexts/LiffContext";
+import { AdminAuthProvider } from "@/contexts/AdminAuthContext";
 import AuthWrapper from "@/components/AuthWrapper";
 import Index from "./pages/Index";
 import RoleSelection from "./pages/RoleSelection";
@@ -18,23 +19,25 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <LiffProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AuthWrapper>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/role-selection" element={<RoleSelection />} />
-              <Route path="/driver" element={<Driver />} />
-              <Route path="/admin" element={<Admin />} />
-              <Route path="/merchant" element={<Merchant />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </AuthWrapper>
-        </BrowserRouter>
-      </TooltipProvider>
+      <AdminAuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AuthWrapper>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/role-selection" element={<RoleSelection />} />
+                <Route path="/driver" element={<Driver />} />
+                <Route path="/admin" element={<Admin />} />
+                <Route path="/merchant" element={<Merchant />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </AuthWrapper>
+          </BrowserRouter>
+        </TooltipProvider>
+      </AdminAuthProvider>
     </LiffProvider>
   </QueryClientProvider>
 );

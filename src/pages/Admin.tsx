@@ -3,7 +3,10 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Users, Car, Store, TrendingUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Shield, Users, Car, Store, TrendingUp, LogOut } from "lucide-react";
+import { useAdminAuth } from "@/contexts/AdminAuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 interface OrderStats {
   total: number;
@@ -13,6 +16,8 @@ interface OrderStats {
 }
 
 const Admin = () => {
+  const { user, signOut } = useAdminAuth();
+  const { toast } = useToast();
   const [stats, setStats] = useState<OrderStats>({
     total: 0,
     waiting: 0,
@@ -23,9 +28,11 @@ const Admin = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadStats();
-    loadRecentOrders();
-  }, []);
+    if (user) {
+      loadStats();
+      loadRecentOrders();
+    }
+  }, [user]);
 
   const loadStats = async () => {
     try {
@@ -73,6 +80,22 @@ const Admin = () => {
     }
   };
 
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "已登出",
+        description: "您已成功登出管理系統",
+      });
+    } catch (error) {
+      toast({
+        title: "登出失敗",
+        description: "請稍後再試",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const statusMap = {
       waiting: { label: '等待中', variant: 'secondary' as const },
@@ -98,9 +121,23 @@ const Admin = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100">
       <div className="container mx-auto px-4 py-6">
-        <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-purple-800 mb-2">管理員控制台</h1>
-          <p className="text-purple-600">系統總覽與管理</p>
+        {/* Header with Sign Out */}
+        <div className="flex justify-between items-center mb-6">
+          <div className="text-center flex-1">
+            <h1 className="text-3xl font-bold text-purple-800 mb-2">管理員控制台</h1>
+            <p className="text-purple-600">系統總覽與管理</p>
+            {user && (
+              <p className="text-sm text-purple-500 mt-1">歡迎，{user.email}</p>
+            )}
+          </div>
+          <Button 
+            onClick={handleSignOut}
+            variant="outline"
+            className="border-purple-300 text-purple-700 hover:bg-purple-50"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            登出
+          </Button>
         </div>
 
         {/* 統計卡片 */}
