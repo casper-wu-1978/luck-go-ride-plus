@@ -14,7 +14,6 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface UserProfile {
   id?: string;
-  line_user_id?: string;
   name: string;
   phone: string;
   email: string;
@@ -45,7 +44,7 @@ const Profile = () => {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('line_user_id', liffProfile.userId)
+        .eq('user_id', liffProfile.userId)
         .maybeSingle();
 
       if (error) {
@@ -54,9 +53,8 @@ const Profile = () => {
       }
 
       if (data) {
-        const userProfile = {
+        const userProfile: UserProfile = {
           id: data.id,
-          line_user_id: data.line_user_id,
           name: data.name || liffProfile.displayName,
           phone: data.phone || "",
           email: data.email || "",
@@ -67,7 +65,7 @@ const Profile = () => {
         setEditProfile(userProfile);
       } else {
         // 如果資料庫中沒有資料，使用 LIFF 資料初始化
-        const userProfile = {
+        const userProfile: UserProfile = {
           name: liffProfile.displayName,
           phone: "",
           email: "",
@@ -95,7 +93,7 @@ const Profile = () => {
     setIsLoading(true);
     try {
       const profileData = {
-        line_user_id: liffProfile.userId,
+        user_id: liffProfile.userId,
         name: editProfile.name,
         phone: editProfile.phone,
         email: editProfile.email,
@@ -107,7 +105,7 @@ const Profile = () => {
       const { data: existingData } = await supabase
         .from('profiles')
         .select('id')
-        .eq('line_user_id', liffProfile.userId)
+        .eq('user_id', liffProfile.userId)
         .maybeSingle();
 
       let result;
@@ -116,7 +114,7 @@ const Profile = () => {
         result = await supabase
           .from('profiles')
           .update(profileData)
-          .eq('line_user_id', liffProfile.userId)
+          .eq('user_id', liffProfile.userId)
           .select()
           .single();
       } else {
@@ -132,10 +130,13 @@ const Profile = () => {
         throw result.error;
       }
 
-      const updatedProfile = {
-        ...editProfile,
+      const updatedProfile: UserProfile = {
         id: result.data.id,
-        line_user_id: result.data.line_user_id,
+        name: result.data.name,
+        phone: result.data.phone || "",
+        email: result.data.email || "",
+        business_name: result.data.business_name || "",
+        business_address: result.data.business_address || "",
       };
       
       setProfile(updatedProfile);
@@ -157,7 +158,8 @@ const Profile = () => {
   };
 
   const handleCancelEdit = () => {
-    setEditProfile(profile);
+    setProfile({ ...profile });
+    setEditProfile({ ...profile });
     setIsEditing(false);
   };
 
