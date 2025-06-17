@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { MapPin, Home, Building, Plus, Edit, Trash, Hash } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useLiff } from "@/contexts/LiffContext";
 
 interface FavoriteAddress {
   id: string;
@@ -24,40 +26,25 @@ const FavoriteAddresses = () => {
   const [newAddress, setNewAddress] = useState("");
   const [newCode, setNewCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const { profile: liffProfile, isLoading: liffLoading } = useLiff();
   const { toast } = useToast();
-
-  // 檢查用戶登入狀態
-  useEffect(() => {
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-    };
-    checkUser();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
 
   // 載入地址資料
   useEffect(() => {
-    if (user) {
+    if (liffProfile?.userId && !liffLoading) {
       loadAddresses();
     }
-  }, [user]);
+  }, [liffProfile, liffLoading]);
 
   const loadAddresses = async () => {
-    if (!user) return;
+    if (!liffProfile?.userId) return;
 
     setIsLoading(true);
     try {
       const { data, error } = await supabase
         .from('favorite_addresses')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('line_user_id', liffProfile.userId)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -70,7 +57,7 @@ const FavoriteAddresses = () => {
         return;
       }
 
-      const formattedAddresses = data.map(addr => ({
+      const formattedAddresses = (data || []).map(addr => ({
         id: addr.id,
         name: addr.name,
         address: addr.address || "",
@@ -90,7 +77,7 @@ const FavoriteAddresses = () => {
   };
 
   const handleAddAddress = async () => {
-    if (!user) {
+    if (!liffProfile?.userId) {
       toast({
         title: "請先登入",
         description: "需要登入才能新增地址",
@@ -113,11 +100,12 @@ const FavoriteAddresses = () => {
       const { data, error } = await supabase
         .from('favorite_addresses')
         .insert({
-          user_id: user.id,
+          line_user_id: liffProfile.userId,
           name: newName,
           address: newAddress,
           code: "",
-          address_type: 'address'
+          address_type: 'address',
+          user_id: null
         })
         .select()
         .single();
@@ -163,7 +151,7 @@ const FavoriteAddresses = () => {
   };
 
   const handleAddCode = async () => {
-    if (!user) {
+    if (!liffProfile?.userId) {
       toast({
         title: "請先登入",
         description: "需要登入才能新增代碼",
@@ -186,11 +174,12 @@ const FavoriteAddresses = () => {
       const { data, error } = await supabase
         .from('favorite_addresses')
         .insert({
-          user_id: user.id,
+          line_user_id: liffProfile.userId,
           name: `代碼 ${newCode}`,
           address: "",
           code: newCode,
-          address_type: 'code'
+          address_type: 'code',
+          user_id: null
         })
         .select()
         .single();
@@ -235,7 +224,7 @@ const FavoriteAddresses = () => {
   };
 
   const handleDeleteAddress = async (id: string) => {
-    if (!user) return;
+    if (!liffProfile?.userId) return;
 
     setIsLoading(true);
     try {
@@ -243,7 +232,7 @@ const FavoriteAddresses = () => {
         .from('favorite_addresses')
         .delete()
         .eq('id', id)
-        .eq('user_id', user.id);
+        .eq('line_user_id', liffProfile.userId);
 
       if (error) {
         console.error('刪除錯誤:', error);
@@ -272,12 +261,22 @@ const FavoriteAddresses = () => {
     }
   };
 
-  if (isLoading && addresses.length === 0) {
+  if (liffLoading || (isLoading && addresses.length === 0)) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto mb-4"></div>
           <p className="text-gray-600">載入中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!liffProfile?.userId) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-gray-600">請先完成 LINE 登入</p>
         </div>
       </div>
     );
