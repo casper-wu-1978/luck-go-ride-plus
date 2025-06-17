@@ -27,6 +27,7 @@ const CallCar = () => {
     { id: "taxi", label: "小黃" },
     { id: "diverse", label: "多元" },
     { id: "private", label: "白牌" },
+    { id: "driver", label: "代駕" },
   ];
 
   const handleCallCar = async () => {
