@@ -300,26 +300,26 @@ const CallCar = () => {
       {callRecords.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center text-gray-700">
-              <Clock className="h-5 w-5 mr-2" />
+            <CardTitle className="flex items-center text-gray-700 text-xl">
+              <Clock className="h-6 w-6 mr-2" />
               司機媒合狀態
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {callRecords.map((record) => (
-                <div key={record.id} className="p-3 border rounded-lg bg-gray-50">
-                  <div className="flex justify-between items-start mb-2">
+                <div key={record.id} className="p-4 border rounded-lg bg-gray-50">
+                  <div className="flex justify-between items-start mb-3">
                     <div>
-                      <span className="font-medium text-gray-800">
+                      <span className="font-semibold text-gray-800 text-lg">
                         {record.carTypeLabel}
                       </span>
-                      <span className="text-sm text-gray-500 ml-2">
+                      <span className="text-base text-gray-600 ml-3">
                         {record.timestamp.toLocaleTimeString()}
                       </span>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <span className={`text-sm font-medium ${getStatusColor(record.status)}`}>
+                    <div className="flex items-center space-x-3">
+                      <span className={`text-base font-semibold ${getStatusColor(record.status)}`}>
                         {getStatusText(record.status)}
                       </span>
                       {record.status === 'waiting' && (
@@ -327,9 +327,9 @@ const CallCar = () => {
                           size="sm"
                           variant="outline"
                           onClick={() => handleCancelCall(record.id)}
-                          className="h-6 px-2 text-xs border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400"
+                          className="h-7 px-3 text-sm border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400"
                         >
-                          <X className="h-3 w-3 mr-1" />
+                          <X className="h-4 w-4 mr-1" />
                           取消
                         </Button>
                       )}
@@ -337,9 +337,9 @@ const CallCar = () => {
                   </div>
                   
                   {record.status === 'waiting' && (
-                    <div className="mt-2">
-                      <Progress value={undefined} className="w-full h-2" />
-                      <div className="text-xs text-gray-500 mt-1">
+                    <div className="mt-3">
+                      <Progress value={undefined} className="w-full h-3" />
+                      <div className="text-sm text-gray-600 mt-2">
                         正在為您尋找最適合的司機...
                       </div>
                     </div>
