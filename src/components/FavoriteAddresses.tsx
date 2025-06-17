@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -76,7 +75,7 @@ const FavoriteAddresses = () => {
         name: addr.name,
         address: addr.address || "",
         code: addr.code || "",
-        address_type: addr.address_type,
+        address_type: addr.address_type as 'address' | 'code',
         icon: addr.address_type === 'code' ? Hash : 
               addr.name.includes('家') ? Home : 
               addr.name.includes('公司') ? Building : MapPin,
