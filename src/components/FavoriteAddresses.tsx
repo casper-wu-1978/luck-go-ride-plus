@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -62,37 +61,39 @@ const FavoriteAddresses = () => {
     });
   };
 
-  const handleAddCode = () => {
-    if (!selectedAddressId || !newCode) {
-      toast({
-        title: "請填寫完整資訊",
-        description: "請選擇地址並輸入代碼",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setAddresses(addresses.map(addr => 
-      addr.id === selectedAddressId 
-        ? { ...addr, code: newCode }
-        : addr
-    ));
-    
-    setNewCode("");
-    setSelectedAddressId(null);
-    setIsAddingCode(false);
-    
-    toast({
-      title: "新增成功",
-      description: "代碼已新增",
-    });
-  };
-
   const handleDeleteAddress = (id: number) => {
     setAddresses(addresses.filter(addr => addr.id !== id));
     toast({
       title: "刪除成功",
       description: "地址已刪除",
+    });
+  };
+
+  const handleAddCode = () => {
+    if (!newCode) {
+      toast({
+        title: "請填寫完整資訊",
+        description: "請輸入代碼",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newCodeObj = {
+      id: Date.now(),
+      name: `代碼 ${newCode}`,
+      address: "",
+      code: newCode,
+      icon: Hash,
+    };
+
+    setAddresses([...addresses, newCodeObj]);
+    setNewCode("");
+    setIsAddingCode(false);
+    
+    toast({
+      title: "新增成功",
+      description: "代碼已新增",
     });
   };
 
@@ -174,23 +175,6 @@ const FavoriteAddresses = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="selectAddress">選擇地址</Label>
-              <select
-                id="selectAddress"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                value={selectedAddressId || ""}
-                onChange={(e) => setSelectedAddressId(Number(e.target.value) || null)}
-              >
-                <option value="">請選擇地址</option>
-                {addresses.map((address) => (
-                  <option key={address.id} value={address.id}>
-                    {address.name} - {address.address}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            <div>
               <Label htmlFor="codeInput">代碼</Label>
               <p className="text-xs text-gray-500 mb-2">包廂號碼、房間號碼等</p>
               <Input
@@ -210,7 +194,6 @@ const FavoriteAddresses = () => {
                 onClick={() => {
                   setIsAddingCode(false);
                   setNewCode("");
-                  setSelectedAddressId(null);
                 }}
                 className="flex-1"
               >
@@ -233,18 +216,28 @@ const FavoriteAddresses = () => {
                     <Icon className="h-5 w-5 text-emerald-600 mt-1 mr-3 flex-shrink-0" />
                     <div className="flex-1 space-y-3">
                       {/* 地址區塊 */}
-                      <div>
-                        <h3 className="font-medium text-gray-900 mb-1">{address.name}</h3>
-                        <p className="text-sm text-gray-600">{address.address}</p>
-                      </div>
+                      {address.address && (
+                        <div>
+                          <h3 className="font-medium text-gray-900 mb-1">{address.name}</h3>
+                          <p className="text-sm text-gray-600">{address.address}</p>
+                        </div>
+                      )}
                       
                       {/* 代碼區塊 */}
                       {address.code && (
                         <div className="bg-emerald-50 border border-emerald-200 rounded-md p-2">
                           <div className="flex items-center">
                             <Hash className="h-3 w-3 text-emerald-600 mr-1" />
-                            <span className="text-xs font-medium text-emerald-700">代碼：</span>
-                            <span className="text-xs text-emerald-600 ml-1">{address.code}</span>
+                            {address.address ? (
+                              <>
+                                <span className="text-xs font-medium text-emerald-700">代碼：</span>
+                                <span className="text-xs text-emerald-600 ml-1">{address.code}</span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-xs font-medium text-emerald-700">{address.name}</span>
+                              </>
+                            )}
                           </div>
                         </div>
                       )}
@@ -276,8 +269,8 @@ const FavoriteAddresses = () => {
         <Card>
           <CardContent className="p-8 text-center">
             <MapPin className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-            <p className="text-gray-500">尚未新增任何地址</p>
-            <p className="text-sm text-gray-400 mt-1">新增地址讓叫車更便利</p>
+            <p className="text-gray-500">尚未新增任何地址或代碼</p>
+            <p className="text-sm text-gray-400 mt-1">新增地址或代碼讓叫車更便利</p>
           </CardContent>
         </Card>
       )}
