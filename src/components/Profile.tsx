@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,42 +10,178 @@ import { User, Phone, Mail, Bell, Shield, LogOut, Edit, Building, MapPin } from 
 import { useToast } from "@/hooks/use-toast";
 import { useLiff } from "@/contexts/LiffContext";
 import { closeLiff } from "@/lib/liff";
+import { supabase } from "@/integrations/supabase/client";
+
+interface UserProfile {
+  id?: string;
+  name: string;
+  phone: string;
+  email: string;
+  business_name: string;
+  business_address: string;
+}
 
 const Profile = () => {
-  const { profile: liffProfile, isLoading } = useLiff();
+  const { profile: liffProfile, isLoading: liffLoading } = useLiff();
   const [isEditing, setIsEditing] = useState(false);
-  const [profile, setProfile] = useState({
+  const [profile, setProfile] = useState<UserProfile>({
     name: "",
-    phone: "0912-345-678",
-    email: "user@example.com",
-    businessName: "商家名稱",
-    businessAddress: "台北市大安區忠孝東路四段123號",
+    phone: "",
+    email: "",
+    business_name: "",
+    business_address: "",
   });
-  const [editProfile, setEditProfile] = useState(profile);
+  const [editProfile, setEditProfile] = useState<UserProfile>(profile);
   const [notifications, setNotifications] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [user, setUser] = useState<any>(null);
   const { toast } = useToast();
 
-  // 使用 LIFF 資料更新本地資料
-  React.useEffect(() => {
-    if (liffProfile) {
-      setProfile(prev => ({
-        ...prev,
-        name: liffProfile.displayName,
-      }));
-      setEditProfile(prev => ({
-        ...prev,
-        name: liffProfile.displayName,
-      }));
-    }
-  }, [liffProfile]);
+  // 檢查用戶登入狀態
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
+    checkUser();
 
-  const handleSaveProfile = () => {
-    setProfile(editProfile);
-    setIsEditing(false);
-    toast({
-      title: "更新成功",
-      description: "個人資料已更新",
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
     });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // 載入用戶資料
+  useEffect(() => {
+    if (user && !liffLoading) {
+      loadUserProfile();
+    }
+  }, [user, liffLoading]);
+
+  // 使用 LIFF 資料更新本地資料
+  useEffect(() => {
+    if (liffProfile && profile.name === "") {
+      const updatedProfile = {
+        ...profile,
+        name: liffProfile.displayName,
+      };
+      setProfile(updatedProfile);
+      setEditProfile(updatedProfile);
+    }
+  }, [liffProfile, profile]);
+
+  const loadUserProfile = async () => {
+    if (!user) return;
+
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('載入資料錯誤:', error);
+        toast({
+          title: "載入失敗",
+          description: "無法載入個人資料",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (data) {
+        const userProfile = {
+          id: data.id,
+          name: data.name || (liffProfile?.displayName || ""),
+          phone: data.phone || "",
+          email: data.email || "",
+          business_name: data.business_name || "",
+          business_address: data.business_address || "",
+        };
+        setProfile(userProfile);
+        setEditProfile(userProfile);
+      } else if (liffProfile) {
+        // 如果沒有資料但有 LIFF 資料，使用 LIFF 資料
+        const newProfile = {
+          name: liffProfile.displayName,
+          phone: "",
+          email: "",
+          business_name: "",
+          business_address: "",
+        };
+        setProfile(newProfile);
+        setEditProfile(newProfile);
+      }
+    } catch (error) {
+      console.error('載入資料錯誤:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user) {
+      toast({
+        title: "請先登入",
+        description: "需要登入才能儲存資料",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const profileData = {
+        user_id: user.id,
+        name: editProfile.name,
+        phone: editProfile.phone,
+        email: editProfile.email,
+        business_name: editProfile.business_name,
+        business_address: editProfile.business_address,
+      };
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .upsert(profileData, { onConflict: 'user_id' })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('儲存錯誤:', error);
+        toast({
+          title: "儲存失敗",
+          description: "無法儲存個人資料",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setProfile({
+        id: data.id,
+        name: data.name,
+        phone: data.phone || "",
+        email: data.email || "",
+        business_name: data.business_name || "",
+        business_address: data.business_address || "",
+      });
+      setIsEditing(false);
+      toast({
+        title: "更新成功",
+        description: "個人資料已更新",
+      });
+    } catch (error) {
+      console.error('儲存錯誤:', error);
+      toast({
+        title: "儲存失敗",
+        description: "發生未知錯誤",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCancelEdit = () => {
@@ -57,7 +193,7 @@ const Profile = () => {
     closeLiff();
   };
 
-  if (isLoading) {
+  if (liffLoading || isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -68,7 +204,7 @@ const Profile = () => {
     );
   }
 
-  const displayName = liffProfile?.displayName || profile.name || "用戶";
+  const displayName = profile.name || liffProfile?.displayName || "用戶";
   const avatarUrl = liffProfile?.pictureUrl;
 
   return (
@@ -102,6 +238,7 @@ const Profile = () => {
               variant="ghost"
               size="sm"
               onClick={() => setIsEditing(!isEditing)}
+              disabled={isLoading}
             >
               <Edit className="h-4 w-4" />
             </Button>
@@ -111,14 +248,12 @@ const Profile = () => {
           {isEditing ? (
             <>
               <div>
-                <Label htmlFor="name">姓名 (來自 LINE)</Label>
+                <Label htmlFor="name">姓名</Label>
                 <Input
                   id="name"
-                  value={displayName}
-                  disabled
-                  className="bg-gray-100"
+                  value={editProfile.name}
+                  onChange={(e) => setEditProfile({...editProfile, name: e.target.value})}
                 />
-                <p className="text-xs text-gray-500 mt-1">此資料來自 LINE，無法修改</p>
               </div>
               
               <div>
@@ -144,8 +279,8 @@ const Profile = () => {
                 <Label htmlFor="businessName">商家名稱</Label>
                 <Input
                   id="businessName"
-                  value={editProfile.businessName}
-                  onChange={(e) => setEditProfile({...editProfile, businessName: e.target.value})}
+                  value={editProfile.business_name}
+                  onChange={(e) => setEditProfile({...editProfile, business_name: e.target.value})}
                 />
               </div>
 
@@ -153,14 +288,18 @@ const Profile = () => {
                 <Label htmlFor="businessAddress">商家住址</Label>
                 <Input
                   id="businessAddress"
-                  value={editProfile.businessAddress}
-                  onChange={(e) => setEditProfile({...editProfile, businessAddress: e.target.value})}
+                  value={editProfile.business_address}
+                  onChange={(e) => setEditProfile({...editProfile, business_address: e.target.value})}
                 />
               </div>
 
               <div className="flex space-x-2 pt-2">
-                <Button onClick={handleSaveProfile} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
-                  儲存
+                <Button 
+                  onClick={handleSaveProfile} 
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "儲存中..." : "儲存"}
                 </Button>
                 <Button variant="outline" onClick={handleCancelEdit} className="flex-1">
                   取消
@@ -172,8 +311,8 @@ const Profile = () => {
               <div className="flex items-center">
                 <User className="h-4 w-4 text-gray-500 mr-3" />
                 <div>
-                  <p className="text-sm text-gray-500">姓名 (來自 LINE)</p>
-                  <p className="font-medium">{displayName}</p>
+                  <p className="text-sm text-gray-500">姓名</p>
+                  <p className="font-medium">{profile.name || "未設定"}</p>
                 </div>
               </div>
               
@@ -181,7 +320,7 @@ const Profile = () => {
                 <Phone className="h-4 w-4 text-gray-500 mr-3" />
                 <div>
                   <p className="text-sm text-gray-500">電話</p>
-                  <p className="font-medium">{profile.phone}</p>
+                  <p className="font-medium">{profile.phone || "未設定"}</p>
                 </div>
               </div>
               
@@ -189,7 +328,7 @@ const Profile = () => {
                 <Mail className="h-4 w-4 text-gray-500 mr-3" />
                 <div>
                   <p className="text-sm text-gray-500">電子郵件</p>
-                  <p className="font-medium">{profile.email}</p>
+                  <p className="font-medium">{profile.email || "未設定"}</p>
                 </div>
               </div>
 
@@ -197,7 +336,7 @@ const Profile = () => {
                 <Building className="h-4 w-4 text-gray-500 mr-3" />
                 <div>
                   <p className="text-sm text-gray-500">商家名稱</p>
-                  <p className="font-medium">{profile.businessName}</p>
+                  <p className="font-medium">{profile.business_name || "未設定"}</p>
                 </div>
               </div>
 
@@ -205,7 +344,7 @@ const Profile = () => {
                 <MapPin className="h-4 w-4 text-gray-500 mr-3" />
                 <div>
                   <p className="text-sm text-gray-500">商家住址</p>
-                  <p className="font-medium">{profile.businessAddress}</p>
+                  <p className="font-medium">{profile.business_address || "未設定"}</p>
                 </div>
               </div>
             </>

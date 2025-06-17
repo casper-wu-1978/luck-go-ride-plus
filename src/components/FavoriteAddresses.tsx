@@ -1,39 +1,105 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MapPin, Home, Building, Plus, Edit, Trash, Hash } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+
+interface FavoriteAddress {
+  id: string;
+  name: string;
+  address: string;
+  code: string;
+  address_type: 'address' | 'code';
+  icon: any;
+}
 
 const FavoriteAddresses = () => {
-  const [addresses, setAddresses] = useState([
-    { 
-      id: 1, 
-      name: "家裡", 
-      address: "台北市信義區信義路五段7號", 
-      code: "A101",
-      icon: Home 
-    },
-    { 
-      id: 2, 
-      name: "公司", 
-      address: "台北市松山區敦化北路100號", 
-      code: "B302",
-      icon: Building 
-    },
-  ]);
-  
+  const [addresses, setAddresses] = useState<FavoriteAddress[]>([]);
   const [isAddingAddress, setIsAddingAddress] = useState(false);
   const [isAddingCode, setIsAddingCode] = useState(false);
   const [newName, setNewName] = useState("");
   const [newAddress, setNewAddress] = useState("");
   const [newCode, setNewCode] = useState("");
-  const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [user, setUser] = useState<any>(null);
   const { toast } = useToast();
 
-  const handleAddAddress = () => {
+  // 檢查用戶登入狀態
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
+    checkUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // 載入地址資料
+  useEffect(() => {
+    if (user) {
+      loadAddresses();
+    }
+  }, [user]);
+
+  const loadAddresses = async () => {
+    if (!user) return;
+
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('favorite_addresses')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('載入地址錯誤:', error);
+        toast({
+          title: "載入失敗",
+          description: "無法載入常用地址",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const formattedAddresses = data.map(addr => ({
+        id: addr.id,
+        name: addr.name,
+        address: addr.address || "",
+        code: addr.code || "",
+        address_type: addr.address_type,
+        icon: addr.address_type === 'code' ? Hash : 
+              addr.name.includes('家') ? Home : 
+              addr.name.includes('公司') ? Building : MapPin,
+      }));
+
+      setAddresses(formattedAddresses);
+    } catch (error) {
+      console.error('載入地址錯誤:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAddAddress = async () => {
+    if (!user) {
+      toast({
+        title: "請先登入",
+        description: "需要登入才能新增地址",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!newName || !newAddress) {
       toast({
         title: "請填寫完整資訊",
@@ -43,34 +109,70 @@ const FavoriteAddresses = () => {
       return;
     }
 
-    const newAddressObj = {
-      id: Date.now(),
-      name: newName,
-      address: newAddress,
-      code: "",
-      icon: MapPin,
-    };
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('favorite_addresses')
+        .insert({
+          user_id: user.id,
+          name: newName,
+          address: newAddress,
+          code: "",
+          address_type: 'address'
+        })
+        .select()
+        .single();
 
-    setAddresses([...addresses, newAddressObj]);
-    setNewName("");
-    setNewAddress("");
-    setIsAddingAddress(false);
-    
-    toast({
-      title: "新增成功",
-      description: "地址已新增",
-    });
+      if (error) {
+        console.error('新增地址錯誤:', error);
+        toast({
+          title: "新增失敗",
+          description: "無法新增地址",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const newAddressObj = {
+        id: data.id,
+        name: data.name,
+        address: data.address || "",
+        code: data.code || "",
+        address_type: data.address_type as 'address' | 'code',
+        icon: MapPin,
+      };
+
+      setAddresses([newAddressObj, ...addresses]);
+      setNewName("");
+      setNewAddress("");
+      setIsAddingAddress(false);
+      
+      toast({
+        title: "新增成功",
+        description: "地址已新增",
+      });
+    } catch (error) {
+      console.error('新增地址錯誤:', error);
+      toast({
+        title: "新增失敗",
+        description: "發生未知錯誤",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleDeleteAddress = (id: number) => {
-    setAddresses(addresses.filter(addr => addr.id !== id));
-    toast({
-      title: "刪除成功",
-      description: "地址已刪除",
-    });
-  };
+  const handleAddCode = async () => {
+    if (!user) {
+      toast({
+        title: "請先登入",
+        description: "需要登入才能新增代碼",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  const handleAddCode = () => {
     if (!newCode) {
       toast({
         title: "請填寫完整資訊",
@@ -80,23 +182,107 @@ const FavoriteAddresses = () => {
       return;
     }
 
-    const newCodeObj = {
-      id: Date.now(),
-      name: `代碼 ${newCode}`,
-      address: "",
-      code: newCode,
-      icon: Hash,
-    };
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('favorite_addresses')
+        .insert({
+          user_id: user.id,
+          name: `代碼 ${newCode}`,
+          address: "",
+          code: newCode,
+          address_type: 'code'
+        })
+        .select()
+        .single();
 
-    setAddresses([...addresses, newCodeObj]);
-    setNewCode("");
-    setIsAddingCode(false);
-    
-    toast({
-      title: "新增成功",
-      description: "代碼已新增",
-    });
+      if (error) {
+        console.error('新增代碼錯誤:', error);
+        toast({
+          title: "新增失敗",
+          description: "無法新增代碼",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const newCodeObj = {
+        id: data.id,
+        name: data.name,
+        address: data.address || "",
+        code: data.code || "",
+        address_type: data.address_type as 'address' | 'code',
+        icon: Hash,
+      };
+
+      setAddresses([newCodeObj, ...addresses]);
+      setNewCode("");
+      setIsAddingCode(false);
+      
+      toast({
+        title: "新增成功",
+        description: "代碼已新增",
+      });
+    } catch (error) {
+      console.error('新增代碼錯誤:', error);
+      toast({
+        title: "新增失敗",
+        description: "發生未知錯誤",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  const handleDeleteAddress = async (id: string) => {
+    if (!user) return;
+
+    setIsLoading(true);
+    try {
+      const { error } = await supabase
+        .from('favorite_addresses')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('刪除錯誤:', error);
+        toast({
+          title: "刪除失敗",
+          description: "無法刪除地址",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setAddresses(addresses.filter(addr => addr.id !== id));
+      toast({
+        title: "刪除成功",
+        description: "地址已刪除",
+      });
+    } catch (error) {
+      console.error('刪除錯誤:', error);
+      toast({
+        title: "刪除失敗",
+        description: "發生未知錯誤",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading && addresses.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">載入中...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -106,6 +292,7 @@ const FavoriteAddresses = () => {
           <Button 
             onClick={() => setIsAddingAddress(true)}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3"
+            disabled={isLoading}
           >
             <Plus className="h-4 w-4 mr-2" />
             新增地址
@@ -114,6 +301,7 @@ const FavoriteAddresses = () => {
           <Button 
             onClick={() => setIsAddingCode(true)}
             className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3"
+            disabled={isLoading}
           >
             <Plus className="h-4 w-4 mr-2" />
             新增代碼
@@ -149,8 +337,12 @@ const FavoriteAddresses = () => {
             </div>
 
             <div className="flex space-x-2 pt-4">
-              <Button onClick={handleAddAddress} className="flex-1 bg-blue-600 hover:bg-blue-700">
-                確認新增
+              <Button 
+                onClick={handleAddAddress} 
+                className="flex-1 bg-blue-600 hover:bg-blue-700"
+                disabled={isLoading}
+              >
+                {isLoading ? "新增中..." : "確認新增"}
               </Button>
               <Button 
                 variant="outline" 
@@ -160,6 +352,7 @@ const FavoriteAddresses = () => {
                   setNewAddress("");
                 }}
                 className="flex-1"
+                disabled={isLoading}
               >
                 取消
               </Button>
@@ -187,8 +380,12 @@ const FavoriteAddresses = () => {
             </div>
 
             <div className="flex space-x-2 pt-4">
-              <Button onClick={handleAddCode} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
-                確認新增
+              <Button 
+                onClick={handleAddCode} 
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                disabled={isLoading}
+              >
+                {isLoading ? "新增中..." : "確認新增"}
               </Button>
               <Button 
                 variant="outline" 
@@ -197,6 +394,7 @@ const FavoriteAddresses = () => {
                   setNewCode("");
                 }}
                 className="flex-1"
+                disabled={isLoading}
               >
                 取消
               </Button>
@@ -245,6 +443,7 @@ const FavoriteAddresses = () => {
                       variant="ghost" 
                       className="p-2"
                       onClick={() => handleDeleteAddress(address.id)}
+                      disabled={isLoading}
                     >
                       <Trash className="h-4 w-4 text-red-500" />
                     </Button>
@@ -257,7 +456,7 @@ const FavoriteAddresses = () => {
       </div>
 
       {/* Empty State */}
-      {addresses.length === 0 && !isAddingAddress && !isAddingCode && (
+      {addresses.length === 0 && !isAddingAddress && !isAddingCode && !isLoading && (
         <Card>
           <CardContent className="p-8 text-center">
             <MapPin className="h-12 w-12 mx-auto mb-4 text-gray-400" />
