@@ -7,6 +7,10 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { LiffProvider } from "@/contexts/LiffContext";
 import AuthWrapper from "@/components/AuthWrapper";
 import Index from "./pages/Index";
+import RoleSelection from "./pages/RoleSelection";
+import Driver from "./pages/Driver";
+import Admin from "./pages/Admin";
+import Merchant from "./pages/Merchant";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -21,6 +25,10 @@ const App = () => (
           <AuthWrapper>
             <Routes>
               <Route path="/" element={<Index />} />
+              <Route path="/role-selection" element={<RoleSelection />} />
+              <Route path="/driver" element={<Driver />} />
+              <Route path="/admin" element={<Admin />} />
+              <Route path="/merchant" element={<Merchant />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

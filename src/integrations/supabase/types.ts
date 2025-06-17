@@ -9,13 +9,49 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      admin_profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          line_user_id: string
+          name: string
+          permissions: string[] | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          line_user_id: string
+          name: string
+          permissions?: string[] | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          line_user_id?: string
+          name?: string
+          permissions?: string[] | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       call_records: {
         Row: {
+          accepted_at: string | null
           car_type: string
           car_type_label: string
+          completed_at: string | null
           created_at: string
           driver_car_brand: string | null
           driver_car_color: string | null
+          driver_id: string | null
           driver_name: string | null
           driver_phone: string | null
           driver_plate_number: string | null
@@ -27,11 +63,14 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          accepted_at?: string | null
           car_type: string
           car_type_label: string
+          completed_at?: string | null
           created_at?: string
           driver_car_brand?: string | null
           driver_car_color?: string | null
+          driver_id?: string | null
           driver_name?: string | null
           driver_phone?: string | null
           driver_plate_number?: string | null
@@ -43,11 +82,14 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          accepted_at?: string | null
           car_type?: string
           car_type_label?: string
+          completed_at?: string | null
           created_at?: string
           driver_car_brand?: string | null
           driver_car_color?: string | null
+          driver_id?: string | null
           driver_name?: string | null
           driver_phone?: string | null
           driver_plate_number?: string | null
@@ -153,6 +195,48 @@ export type Database = {
         }
         Relationships: []
       }
+      merchant_profiles: {
+        Row: {
+          business_address: string | null
+          business_name: string
+          business_type: string | null
+          contact_name: string
+          created_at: string
+          email: string | null
+          id: string
+          line_user_id: string
+          phone: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          business_address?: string | null
+          business_name: string
+          business_type?: string | null
+          contact_name: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          line_user_id: string
+          phone?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          business_address?: string | null
+          business_name?: string
+          business_type?: string | null
+          contact_name?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          line_user_id?: string
+          phone?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           business_address: string | null
@@ -192,15 +276,45 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          line_user_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          line_user_id: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          line_user_id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _line_user_id: string
+          _role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "driver" | "admin" | "merchant"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -315,6 +429,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["driver", "admin", "merchant"],
+    },
   },
 } as const
