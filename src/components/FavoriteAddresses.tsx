@@ -151,9 +151,14 @@ const FavoriteAddresses = () => {
                 <div className="flex items-start justify-between">
                   <div className="flex items-start flex-1">
                     <Icon className="h-5 w-5 text-emerald-600 mt-1 mr-3 flex-shrink-0" />
-                    <div className="flex-1">
-                      <h3 className="font-medium text-gray-900 mb-1">{address.name}</h3>
-                      <p className="text-sm text-gray-600 mb-2">{address.address}</p>
+                    <div className="flex-1 space-y-3">
+                      {/* 地址區塊 */}
+                      <div>
+                        <h3 className="font-medium text-gray-900 mb-1">{address.name}</h3>
+                        <p className="text-sm text-gray-600">{address.address}</p>
+                      </div>
+                      
+                      {/* 代碼區塊 */}
                       {address.code && (
                         <div className="bg-emerald-50 border border-emerald-200 rounded-md p-2">
                           <div className="flex items-center">
@@ -186,6 +191,7 @@ const FavoriteAddresses = () => {
         })}
       </div>
 
+      {/* Empty State */}
       {addresses.length === 0 && !isAdding && (
         <Card>
           <CardContent className="p-8 text-center">
