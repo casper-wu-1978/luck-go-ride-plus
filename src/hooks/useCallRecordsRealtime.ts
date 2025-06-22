@@ -43,10 +43,10 @@ export const useCallRecordsRealtime = ({ lineUserId, onRecordUpdate }: UseCallRe
           // 顯示收到變更事件的提示
           toast({
             title: "🔥 收到資料庫變更",
-            description: `事件類型: ${payload.eventType}, 記錄ID: ${payload.new?.id?.slice(-4) || 'N/A'}`,
+            description: `事件類型: ${payload.eventType}, 記錄ID: ${payload.new && typeof payload.new === 'object' && 'id' in payload.new ? (payload.new.id as string)?.slice(-4) || 'N/A' : 'N/A'}`,
           });
           
-          if (payload.eventType === 'UPDATE') {
+          if (payload.eventType === 'UPDATE' && payload.new) {
             console.log('🔥🔥🔥 商家收到叫車記錄更新:', payload.new);
             console.log('🔥🔥🔥 商家收到更新 - 記錄狀態:', payload.new?.status);
             console.log('🔥🔥🔥 商家收到更新 - 司機名稱:', payload.new?.driver_name);
@@ -60,7 +60,7 @@ export const useCallRecordsRealtime = ({ lineUserId, onRecordUpdate }: UseCallRe
             
             onRecordUpdate(payload.new);
             console.log('🔥🔥🔥 商家已調用onRecordUpdate完成');
-          } else if (payload.eventType === 'INSERT') {
+          } else if (payload.eventType === 'INSERT' && payload.new) {
             console.log('🔥🔥🔥 商家收到新叫車記錄:', payload.new);
             onRecordUpdate(payload.new);
           }
