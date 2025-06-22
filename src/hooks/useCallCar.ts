@@ -1,4 +1,5 @@
 
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useLiff } from "@/contexts/LiffContext";
@@ -58,6 +59,65 @@ export const useCallCar = () => {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  // 監聽叫車記錄變化（司機接單）
+  useEffect(() => {
+    if (!liffProfile?.userId) return;
+
+    const channel = supabase
+      .channel('call_records_updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'call_records',
+          filter: `line_user_id=eq.${liffProfile.userId}`
+        },
+        (payload) => {
+          console.log('叫車記錄更新:', payload);
+          const updatedRecord = payload.new;
+          
+          // 更新本地狀態
+          setCallRecords(prev => 
+            prev.map(record => 
+              record.id === updatedRecord.id 
+                ? {
+                    ...record,
+                    status: updatedRecord.status as 'waiting' | 'matched' | 'failed' | 'cancelled',
+                    driverInfo: updatedRecord.driver_name ? {
+                      name: updatedRecord.driver_name,
+                      phone: updatedRecord.driver_phone || '',
+                      plateNumber: updatedRecord.driver_plate_number || '',
+                      carBrand: updatedRecord.driver_car_brand || '',
+                      carColor: updatedRecord.driver_car_color || ''
+                    } : undefined
+                  }
+                : record
+            )
+          );
+
+          // 顯示通知
+          if (updatedRecord.status === 'matched') {
+            toast({
+              title: "叫車成功！",
+              description: `司機 ${updatedRecord.driver_name} 已接單，請準備上車`,
+            });
+          } else if (updatedRecord.status === 'failed') {
+            toast({
+              title: "叫車失敗",
+              description: "未能找到合適的司機，請稍後再試",
+              variant: "destructive"
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [liffProfile?.userId, toast]);
 
   const loadUserData = async () => {
     if (!liffProfile?.userId) return;
@@ -208,3 +268,4 @@ export const useCallCar = () => {
     loadUserData,
   };
 };
+

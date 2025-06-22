@@ -49,6 +49,7 @@ export const useDriverOrders = () => {
       }));
 
       setOrders(formattedOrders);
+      console.log('載入待接訂單:', formattedOrders.length, '筆');
     } catch (error) {
       console.error('載入訂單錯誤:', error);
     } finally {
@@ -60,7 +61,7 @@ export const useDriverOrders = () => {
     if (!profile?.userId || !isOnline) {
       toast({
         title: "無法接單",
-        description: isOnline ? "請先上線" : "系統錯誤",
+        description: isOnline ? "系統錯誤" : "請先上線",
         variant: "destructive",
       });
       return;
@@ -72,9 +73,12 @@ export const useDriverOrders = () => {
         .from('driver_profiles')
         .select('*')
         .eq('line_user_id', profile.userId)
-        .single();
+        .maybeSingle();
 
-      const { error } = await supabase
+      console.log('司機資料:', driverData);
+
+      // 嘗試接單（使用樂觀鎖定）
+      const { data: updatedRecord, error } = await supabase
         .from('call_records')
         .update({
           status: 'matched',
@@ -87,15 +91,28 @@ export const useDriverOrders = () => {
           accepted_at: new Date().toISOString()
         })
         .eq('id', orderId)
-        .eq('status', 'waiting');
+        .eq('status', 'waiting') // 確保只有等待中的訂單才能被接受
+        .select()
+        .maybeSingle();
 
       if (error) {
         console.error('接單錯誤:', error);
         toast({
           title: "接單失敗",
+          description: "系統錯誤，請稍後再試",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!updatedRecord) {
+        toast({
+          title: "接單失敗",
           description: "此訂單可能已被其他司機接受",
           variant: "destructive",
         });
+        // 重新載入訂單列表
+        loadOrders();
         return;
       }
 
@@ -104,7 +121,10 @@ export const useDriverOrders = () => {
         description: "已成功接受訂單，乘客將收到通知",
       });
 
-      loadOrders();
+      // 立即移除已接受的訂單
+      setOrders(prev => prev.filter(order => order.id !== orderId));
+      
+      console.log('成功接單:', updatedRecord);
     } catch (error) {
       console.error('接單錯誤:', error);
       toast({
