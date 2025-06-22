@@ -56,14 +56,8 @@ export const useCallRecords = (lineUserId?: string) => {
   const updateRecordFromRealtime = (updatedRecord: any) => {
     console.log('🔥 商家端 - 處理實時更新的記錄:', updatedRecord);
     console.log('🔥 商家端 - 記錄ID:', updatedRecord.id);
-    console.log('🔥 商家端 - 更新前的狀態:', updatedRecord.status);
-    console.log('🔥 商家端 - 司機資訊:', updatedRecord.driver_name ? `${updatedRecord.driver_name} (${updatedRecord.driver_phone})` : '無');
-    
-    // 顯示處理實時更新的提示
-    toast({
-      title: "🔥 處理實時更新",
-      description: `記錄ID: ${updatedRecord.id?.slice(-4)}, 狀態: ${updatedRecord.status}`,
-    });
+    console.log('🔥 商家端 - 更新狀態:', updatedRecord.status);
+    console.log('🔥 商家端 - 司機資訊:', updatedRecord.driver_name);
     
     setCallRecords(prev => {
       console.log('🔥 商家端 - 當前記錄列表:', prev.map(r => ({ id: r.id, status: r.status })));
@@ -72,12 +66,6 @@ export const useCallRecords = (lineUserId?: string) => {
       console.log('🔥 商家端 - 找到的記錄索引:', existingIndex);
       
       if (existingIndex >= 0) {
-        // 顯示找到現有記錄的提示
-        toast({
-          title: "🔥 更新現有記錄",
-          description: `索引: ${existingIndex}, 舊狀態: ${prev[existingIndex].status} -> 新狀態: ${updatedRecord.status}`,
-        });
-        
         // 更新現有記錄
         const updatedRecords = [...prev];
         const oldRecord = updatedRecords[existingIndex];
@@ -96,27 +84,11 @@ export const useCallRecords = (lineUserId?: string) => {
         
         console.log('🔥 商家端 - 更新前記錄:', oldRecord);
         console.log('🔥 商家端 - 更新後記錄:', updatedRecords[existingIndex]);
-        console.log('🔥 商家端 - 狀態變化:', oldRecord.status, '->', updatedRecords[existingIndex].status);
-        
-        // 強制觸發重新渲染
-        setTimeout(() => {
-          console.log('🔥 商家端 - 強制重新渲染狀態更新');
-          toast({
-            title: "🔥 狀態更新完成",
-            description: `記錄狀態已更新為: ${updatedRecord.status}`,
-          });
-        }, 200);
         
         return updatedRecords;
       } else {
-        // 顯示創建新記錄的提示
-        toast({
-          title: "🔥 創建新記錄",
-          description: `找不到現有記錄，創建新記錄: ${updatedRecord.id?.slice(-4)}`,
-        });
-        
-        // 新記錄（通常不會發生，因為INSERT事件應該通過createRecord處理）
-        console.log('🔥 商家端 - 找不到現有記錄，創建新記錄');
+        // 新記錄
+        console.log('🔥 商家端 - 創建新記錄');
         const newRecord: CallRecord = {
           id: updatedRecord.id,
           carType: updatedRecord.car_type,
@@ -133,26 +105,9 @@ export const useCallRecords = (lineUserId?: string) => {
             carColor: updatedRecord.driver_car_color || ''
           } : undefined
         };
-        console.log('🔥 商家端 - 新增記錄:', newRecord);
         return [newRecord, ...prev.slice(0, MAX_CALL_RECORDS - 1)];
       }
     });
-
-    // 顯示通知
-    if (updatedRecord.status === 'matched') {
-      console.log('🔥 商家端 - 顯示媒合成功通知:', updatedRecord.driver_name);
-      toast({
-        title: "叫車成功！",
-        description: `司機 ${updatedRecord.driver_name} 已接單，請準備上車`,
-      });
-    } else if (updatedRecord.status === 'failed') {
-      console.log('🔥 商家端 - 顯示媒合失敗通知');
-      toast({
-        title: "叫車失敗",
-        description: "未能找到合適的司機，請稍後再試",
-        variant: "destructive"
-      });
-    }
   };
 
   return {

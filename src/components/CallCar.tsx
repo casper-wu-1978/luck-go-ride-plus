@@ -2,11 +2,14 @@
 import { useEffect } from "react";
 import { useCallCar } from "@/hooks/useCallCar";
 import { useCallCarProfile } from "@/hooks/useCallCarProfile";
+import { useCallRecordsRealtime } from "@/hooks/useCallRecordsRealtime";
+import { useLiff } from "@/contexts/LiffContext";
 import OnlineDriversStatus from "./callCar/OnlineDriversStatus";
 import CallForm from "./callCar/CallForm";
 import CallRecords from "./callCar/CallRecords";
 
 const CallCar = () => {
+  const { profile } = useLiff();
   const {
     isLoading,
     carType,
@@ -27,9 +30,16 @@ const CallCar = () => {
     handleCancelCall,
     loadOnlineDriversCount,
     loadUserData,
+    updateRecordFromRealtime,
   } = useCallCar();
 
   const { userProfile } = useCallCarProfile();
+
+  // 設置實時監聽
+  useCallRecordsRealtime({
+    lineUserId: profile?.userId,
+    onRecordUpdate: updateRecordFromRealtime,
+  });
 
   useEffect(() => {
     console.log('CallCar 組件載入，開始載入數據');

@@ -13,20 +13,14 @@ export const useCallRecordsRealtime = ({ lineUserId, onRecordUpdate }: UseCallRe
 
   useEffect(() => {
     if (!lineUserId) {
-      console.log('🔥 商家端 - 沒有用戶ID，跳過實時監聽設置');
+      console.log('商家端 - 沒有用戶ID，跳過實時監聽設置');
       return;
     }
 
     console.log('🔥 商家端 - 設置實時監聽器:', lineUserId);
     
-    // 顯示調試提示
-    toast({
-      title: "🔥 調試資訊",
-      description: `商家端實時監聽器啟動 - 用戶ID: ${lineUserId.slice(-4)}`,
-    });
-
-    // 使用更簡單的頻道名稱，避免衝突
-    const channelName = `call_records_changes_${Date.now()}`;
+    // 簡化頻道名稱，確保唯一性
+    const channelName = `merchant_updates_${lineUserId.slice(-8)}`;
     
     const channel = supabase
       .channel(channelName)
@@ -40,41 +34,30 @@ export const useCallRecordsRealtime = ({ lineUserId, onRecordUpdate }: UseCallRe
         },
         (payload) => {
           console.log('🔥🔥🔥 商家收到資料庫變更事件:', payload.eventType, payload);
-          console.log('🔥🔥🔥 商家收到的 payload.new:', payload.new);
-          console.log('🔥🔥🔥 商家收到的 payload.old:', payload.old);
-          
-          // 顯示收到變更事件的提示
-          const recordId = payload.new && typeof payload.new === 'object' && 'id' in payload.new ? (payload.new.id as string) : 'N/A';
-          toast({
-            title: "🔥 收到資料庫變更",
-            description: `事件: ${payload.eventType}, ID: ${recordId.slice ? recordId.slice(-4) : recordId}`,
-          });
           
           if (payload.eventType === 'UPDATE' && payload.new) {
-            console.log('🔥🔥🔥 商家收到叫車記錄更新:', payload.new);
-            console.log('🔥🔥🔥 商家收到更新 - 記錄狀態:', payload.new?.status);
-            console.log('🔥🔥🔥 商家收到更新 - 司機名稱:', payload.new?.driver_name);
-            console.log('🔥🔥🔥 商家即將調用onRecordUpdate');
-            
-            // 顯示記錄更新的詳細提示
-            toast({
-              title: "🔥 記錄狀態更新",
-              description: `狀態: ${payload.new?.status} ${payload.new?.driver_name ? `- 司機: ${payload.new.driver_name}` : ''}`,
-            });
+            console.log('🔥🔥🔥 商家收到訂單狀態更新:', payload.new);
+            console.log('🔥🔥🔥 更新狀態:', payload.new?.status);
+            console.log('🔥🔥🔥 司機資訊:', payload.new?.driver_name);
             
             // 立即調用更新函數
-            setTimeout(() => {
-              console.log('🔥🔥🔥 商家開始調用onRecordUpdate');
-              onRecordUpdate(payload.new);
-              console.log('🔥🔥🔥 商家已調用onRecordUpdate完成');
-            }, 100); // 稍微延遲確保狀態更新
+            onRecordUpdate(payload.new);
             
+            // 顯示狀態更新通知
+            if (payload.new?.status === 'matched') {
+              toast({
+                title: "叫車成功！",
+                description: `司機 ${payload.new.driver_name} 已接單`,
+              });
+            } else if (payload.new?.status === 'failed') {
+              toast({
+                title: "叫車失敗",
+                description: "未能找到合適的司機，請稍後再試",
+                variant: "destructive"
+              });
+            }
           } else if (payload.eventType === 'INSERT' && payload.new) {
-            console.log('🔥🔥🔥 商家收到新叫車記錄:', payload.new);
-            toast({
-              title: "🔥 新記錄創建",
-              description: `新叫車記錄: ${recordId.slice ? recordId.slice(-4) : recordId}`,
-            });
+            console.log('🔥🔥🔥 商家收到新訂單:', payload.new);
             onRecordUpdate(payload.new);
           }
         }
@@ -83,43 +66,15 @@ export const useCallRecordsRealtime = ({ lineUserId, onRecordUpdate }: UseCallRe
         console.log('🔥 商家實時監聽狀態:', status);
         if (err) {
           console.error('🔥 商家實時監聽錯誤:', err);
-          toast({
-            title: "🔥 監聽錯誤",
-            description: `錯誤: ${err.message || '未知錯誤'}`,
-            variant: "destructive"
-          });
         }
         if (status === 'SUBSCRIBED') {
           console.log('🔥 商家實時監聽已成功訂閱');
           toast({
-            title: "🔥 監聽成功",
-            description: `商家端實時監聽已成功訂閱 - ${channelName}`,
-          });
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('🔥 商家實時監聽頻道錯誤');
-          toast({
-            title: "🔥 頻道錯誤",
-            description: "實時監聽頻道發生錯誤",
-            variant: "destructive"
-          });
-        } else if (status === 'TIMED_OUT') {
-          console.error('🔥 商家實時監聽超時');
-          toast({
-            title: "🔥 監聽超時",
-            description: "實時監聽連接超時",
-            variant: "destructive"
+            title: "實時監聽已啟動",
+            description: "系統將即時更新訂單狀態",
           });
         }
       });
-
-    // 測試連接狀態
-    setTimeout(() => {
-      console.log('🔥 商家端 - 實時監聽狀態檢查:', channel.state);
-      toast({
-        title: "🔥 連接狀態檢查",
-        description: `監聽器狀態: ${channel.state}`,
-      });
-    }, 3000);
 
     return () => {
       console.log('🔥 商家端 - 清理實時監聽器:', channelName);
