@@ -25,8 +25,11 @@ export const useCallRecordsRealtime = ({ lineUserId, onRecordUpdate }: UseCallRe
       description: `商家端實時監聽器啟動 - 用戶ID: ${lineUserId.slice(-4)}`,
     });
 
+    // 使用更簡單的頻道名稱，避免衝突
+    const channelName = `call_records_changes_${Date.now()}`;
+    
     const channel = supabase
-      .channel(`merchant_call_records_${lineUserId}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -41,9 +44,10 @@ export const useCallRecordsRealtime = ({ lineUserId, onRecordUpdate }: UseCallRe
           console.log('🔥🔥🔥 商家收到的 payload.old:', payload.old);
           
           // 顯示收到變更事件的提示
+          const recordId = payload.new && typeof payload.new === 'object' && 'id' in payload.new ? (payload.new.id as string) : 'N/A';
           toast({
             title: "🔥 收到資料庫變更",
-            description: `事件類型: ${payload.eventType}, 記錄ID: ${payload.new && typeof payload.new === 'object' && 'id' in payload.new ? (payload.new.id as string)?.slice(-4) || 'N/A' : 'N/A'}`,
+            description: `事件: ${payload.eventType}, ID: ${recordId.slice ? recordId.slice(-4) : recordId}`,
           });
           
           if (payload.eventType === 'UPDATE' && payload.new) {
@@ -58,10 +62,19 @@ export const useCallRecordsRealtime = ({ lineUserId, onRecordUpdate }: UseCallRe
               description: `狀態: ${payload.new?.status} ${payload.new?.driver_name ? `- 司機: ${payload.new.driver_name}` : ''}`,
             });
             
-            onRecordUpdate(payload.new);
-            console.log('🔥🔥🔥 商家已調用onRecordUpdate完成');
+            // 立即調用更新函數
+            setTimeout(() => {
+              console.log('🔥🔥🔥 商家開始調用onRecordUpdate');
+              onRecordUpdate(payload.new);
+              console.log('🔥🔥🔥 商家已調用onRecordUpdate完成');
+            }, 100); // 稍微延遲確保狀態更新
+            
           } else if (payload.eventType === 'INSERT' && payload.new) {
             console.log('🔥🔥🔥 商家收到新叫車記錄:', payload.new);
+            toast({
+              title: "🔥 新記錄創建",
+              description: `新叫車記錄: ${recordId.slice ? recordId.slice(-4) : recordId}`,
+            });
             onRecordUpdate(payload.new);
           }
         }
@@ -80,7 +93,7 @@ export const useCallRecordsRealtime = ({ lineUserId, onRecordUpdate }: UseCallRe
           console.log('🔥 商家實時監聽已成功訂閱');
           toast({
             title: "🔥 監聽成功",
-            description: "商家端實時監聽已成功訂閱",
+            description: `商家端實時監聽已成功訂閱 - ${channelName}`,
           });
         } else if (status === 'CHANNEL_ERROR') {
           console.error('🔥 商家實時監聽頻道錯誤');
@@ -106,10 +119,10 @@ export const useCallRecordsRealtime = ({ lineUserId, onRecordUpdate }: UseCallRe
         title: "🔥 連接狀態檢查",
         description: `監聽器狀態: ${channel.state}`,
       });
-    }, 2000);
+    }, 3000);
 
     return () => {
-      console.log('🔥 商家端 - 清理實時監聽器');
+      console.log('🔥 商家端 - 清理實時監聽器:', channelName);
       supabase.removeChannel(channel);
     };
   }, [lineUserId, onRecordUpdate, toast]);

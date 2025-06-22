@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -74,7 +75,7 @@ export const useCallRecords = (lineUserId?: string) => {
         // 顯示找到現有記錄的提示
         toast({
           title: "🔥 更新現有記錄",
-          description: `索引: ${existingIndex}, 新狀態: ${updatedRecord.status}`,
+          description: `索引: ${existingIndex}, 舊狀態: ${prev[existingIndex].status} -> 新狀態: ${updatedRecord.status}`,
         });
         
         // 更新現有記錄
@@ -96,6 +97,15 @@ export const useCallRecords = (lineUserId?: string) => {
         console.log('🔥 商家端 - 更新前記錄:', oldRecord);
         console.log('🔥 商家端 - 更新後記錄:', updatedRecords[existingIndex]);
         console.log('🔥 商家端 - 狀態變化:', oldRecord.status, '->', updatedRecords[existingIndex].status);
+        
+        // 強制觸發重新渲染
+        setTimeout(() => {
+          console.log('🔥 商家端 - 強制重新渲染狀態更新');
+          toast({
+            title: "🔥 狀態更新完成",
+            description: `記錄狀態已更新為: ${updatedRecord.status}`,
+          });
+        }, 200);
         
         return updatedRecords;
       } else {
