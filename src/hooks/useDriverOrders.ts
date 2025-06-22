@@ -26,7 +26,7 @@ export const useDriverOrders = () => {
 
   // 實時監聽新訂單和訂單狀態變化
   useEffect(() => {
-    console.log('設置實時監聽器 - 新訂單');
+    console.log('設置司機實時監聽器 - 新訂單和狀態更新');
     
     const channel = supabase
       .channel('driver_orders_realtime')
@@ -39,7 +39,7 @@ export const useDriverOrders = () => {
           filter: 'status=eq.waiting'
         },
         (payload) => {
-          console.log('收到新訂單:', payload);
+          console.log('司機收到新訂單:', payload);
           const newRecord = payload.new;
           const formattedOrder = {
             id: newRecord.id,
@@ -67,7 +67,7 @@ export const useDriverOrders = () => {
           table: 'call_records'
         },
         (payload) => {
-          console.log('訂單狀態更新:', payload);
+          console.log('司機收到訂單狀態更新:', payload);
           const updatedRecord = payload.new;
           
           // 如果訂單被接受或取消，從待接列表中移除
@@ -77,10 +77,12 @@ export const useDriverOrders = () => {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('司機實時監聽狀態:', status);
+      });
 
     return () => {
-      console.log('清理實時監聽器');
+      console.log('清理司機實時監聽器');
       supabase.removeChannel(channel);
     };
   }, [toast]);

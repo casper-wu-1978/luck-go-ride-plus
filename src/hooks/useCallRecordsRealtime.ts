@@ -14,7 +14,7 @@ export const useCallRecordsRealtime = ({ lineUserId, onRecordUpdate }: UseCallRe
     console.log('設置商家實時監聽器:', lineUserId);
 
     const channel = supabase
-      .channel('merchant_call_records_updates')
+      .channel(`merchant_call_records_${lineUserId}`)
       .on(
         'postgres_changes',
         {
@@ -41,7 +41,9 @@ export const useCallRecordsRealtime = ({ lineUserId, onRecordUpdate }: UseCallRe
           onRecordUpdate(payload.new);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('商家實時監聽狀態:', status);
+      });
 
     return () => {
       console.log('清理商家實時監聽器');
