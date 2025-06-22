@@ -5,6 +5,15 @@ export interface UserProfile {
   name: string;
   phone: string;
   email: string;
-  business_name: string;
-  business_address: string;
+  // 移除商家相關欄位
+  // business_name: string;
+  // business_address: string;
+}
+
+export interface DriverProfile extends UserProfile {
+  vehicle_type?: string;
+  vehicle_brand?: string;
+  vehicle_color?: string;
+  plate_number?: string;
+  license_number?: string;
 }

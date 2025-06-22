@@ -5,7 +5,7 @@ import { Car, FileText, CreditCard, User } from "lucide-react";
 import DriverOrders from "@/components/driver/DriverOrders";
 import DriverHistory from "@/components/driver/DriverHistory";
 import DriverEarnings from "@/components/driver/DriverEarnings";
-import Profile from "@/components/Profile";
+import DriverProfile from "@/components/DriverProfile";
 
 const Driver = () => {
   const [activeTab, setActiveTab] = useState("orders");
@@ -14,7 +14,7 @@ const Driver = () => {
     { id: "orders", label: "接單", icon: Car, component: DriverOrders },
     { id: "history", label: "紀錄", icon: FileText, component: DriverHistory },
     { id: "earnings", label: "收費", icon: CreditCard, component: DriverEarnings },
-    { id: "profile", label: "個資", icon: User, component: Profile },
+    { id: "profile", label: "個資", icon: User, component: DriverProfile },
   ];
 
   return (

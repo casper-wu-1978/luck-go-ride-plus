@@ -200,6 +200,7 @@ const DriverOrders = () => {
           .from('driver_profiles')
           .insert({
             line_user_id: profile.userId,
+            driver_id: profile.userId, // 添加必需的 driver_id 欄位
             name: profile.displayName || '司機',
             status: status,
             vehicle_type: '一般車輛',
