@@ -54,12 +54,16 @@ export const useCallRecords = (lineUserId?: string) => {
   };
 
   const updateRecordFromRealtime = (updatedRecord: any) => {
-    console.log('處理實時更新的記錄:', updatedRecord);
-    console.log('更新前的狀態:', updatedRecord.status);
-    console.log('司機資訊:', updatedRecord.driver_name ? `${updatedRecord.driver_name} (${updatedRecord.driver_phone})` : '無');
+    console.log('商家端 - 處理實時更新的記錄:', updatedRecord);
+    console.log('商家端 - 記錄ID:', updatedRecord.id);
+    console.log('商家端 - 更新前的狀態:', updatedRecord.status);
+    console.log('商家端 - 司機資訊:', updatedRecord.driver_name ? `${updatedRecord.driver_name} (${updatedRecord.driver_phone})` : '無');
     
     setCallRecords(prev => {
+      console.log('商家端 - 當前記錄列表:', prev.map(r => ({ id: r.id, status: r.status })));
+      
       const existingIndex = prev.findIndex(record => record.id === updatedRecord.id);
+      console.log('商家端 - 找到的記錄索引:', existingIndex);
       
       if (existingIndex >= 0) {
         // 更新現有記錄
@@ -75,7 +79,7 @@ export const useCallRecords = (lineUserId?: string) => {
             carColor: updatedRecord.driver_car_color || ''
           } : undefined
         };
-        console.log('更新現有記錄成功:', updatedRecords[existingIndex]);
+        console.log('商家端 - 更新現有記錄成功:', updatedRecords[existingIndex]);
         return updatedRecords;
       } else {
         // 新記錄（通常不會發生，因為INSERT事件應該通過createRecord處理）
@@ -95,20 +99,20 @@ export const useCallRecords = (lineUserId?: string) => {
             carColor: updatedRecord.driver_car_color || ''
           } : undefined
         };
-        console.log('新增記錄:', newRecord);
+        console.log('商家端 - 新增記錄:', newRecord);
         return [newRecord, ...prev.slice(0, MAX_CALL_RECORDS - 1)];
       }
     });
 
     // 顯示通知
     if (updatedRecord.status === 'matched') {
-      console.log('顯示媒合成功通知:', updatedRecord.driver_name);
+      console.log('商家端 - 顯示媒合成功通知:', updatedRecord.driver_name);
       toast({
         title: "叫車成功！",
         description: `司機 ${updatedRecord.driver_name} 已接單，請準備上車`,
       });
     } else if (updatedRecord.status === 'failed') {
-      console.log('顯示媒合失敗通知');
+      console.log('商家端 - 顯示媒合失敗通知');
       toast({
         title: "叫車失敗",
         description: "未能找到合適的司機，請稍後再試",

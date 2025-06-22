@@ -18,27 +18,21 @@ export const useCallRecordsRealtime = ({ lineUserId, onRecordUpdate }: UseCallRe
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: '*', // 監聽所有事件
           schema: 'public',
           table: 'call_records',
           filter: `line_user_id=eq.${lineUserId}`
         },
         (payload) => {
-          console.log('商家收到叫車記錄更新:', payload);
-          onRecordUpdate(payload.new);
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'call_records',
-          filter: `line_user_id=eq.${lineUserId}`
-        },
-        (payload) => {
-          console.log('商家收到新叫車記錄:', payload);
-          onRecordUpdate(payload.new);
+          console.log('商家收到資料庫變更事件:', payload.eventType, payload);
+          
+          if (payload.eventType === 'UPDATE') {
+            console.log('商家收到叫車記錄更新:', payload.new);
+            onRecordUpdate(payload.new);
+          } else if (payload.eventType === 'INSERT') {
+            console.log('商家收到新叫車記錄:', payload.new);
+            onRecordUpdate(payload.new);
+          }
         }
       )
       .subscribe((status, err) => {
