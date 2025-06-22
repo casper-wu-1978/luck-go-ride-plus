@@ -1,10 +1,11 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useLiff } from "@/contexts/LiffContext";
 import { CallRecord, FavoriteCode, FavoriteAddress } from "@/types/callCar";
 import { CAR_TYPES, MAX_CALL_RECORDS } from "@/constants/callCar";
 import { loadFavorites, loadCallRecords, createCallRecord, updateCallRecord } from "@/utils/callCarApi";
-import { matchDriver, getOnlineDrivers } from "@/utils/driverMatching";
+import { getOnlineDrivers } from "@/utils/driverMatching";
 import { UserProfile } from "@/types/profile";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -139,82 +140,10 @@ export const useCallCar = () => {
       
       toast({
         title: "叫車請求已送出",
-        description: "正在為您媒合司機，請稍候...",
+        description: "等待司機接單中，請稍候...",
       });
 
-      setTimeout(async () => {
-        try {
-          const matchedDriver = await matchDriver(carType);
-          
-          if (matchedDriver) {
-            const driverInfo = {
-              name: matchedDriver.name,
-              phone: matchedDriver.phone,
-              plateNumber: matchedDriver.plate_number,
-              carBrand: matchedDriver.car_brand,
-              carColor: matchedDriver.car_color
-            };
-
-            await updateCallRecord(
-              newCallRecord.id,
-              'matched',
-              driverInfo,
-              liffProfile.userId
-            );
-
-            setCallRecords(prev => 
-              prev.map(record => 
-                record.id === newCallRecord.id 
-                  ? { ...record, status: 'matched', driverInfo }
-                  : record
-              )
-            );
-
-            toast({
-              title: "叫車成功！",
-              description: `已媒合司機${driverInfo.name}，預計5分鐘後到達`,
-            });
-
-            await loadOnlineDriversCount();
-          } else {
-            await updateCallRecord(newCallRecord.id, 'failed');
-
-            setCallRecords(prev => 
-              prev.map(record => 
-                record.id === newCallRecord.id 
-                  ? { ...record, status: 'failed' }
-                  : record
-              )
-            );
-
-            toast({
-              title: "叫車失敗",
-              description: "目前沒有可用的司機，請稍後再試",
-              variant: "destructive"
-            });
-          }
-        } catch (error) {
-          console.error('司機媒合錯誤:', error);
-          
-          await updateCallRecord(newCallRecord.id, 'failed');
-          
-          setCallRecords(prev => 
-            prev.map(record => 
-              record.id === newCallRecord.id 
-                ? { ...record, status: 'failed' }
-                : record
-            )
-          );
-
-          toast({
-            title: "叫車失敗",
-            description: "媒合過程發生錯誤，請稍後再試",
-            variant: "destructive"
-          });
-        }
-        
-        setIsLoading(false);
-      }, 2000);
+      setIsLoading(false);
     } catch (error) {
       console.error('叫車錯誤:', error);
       toast({
