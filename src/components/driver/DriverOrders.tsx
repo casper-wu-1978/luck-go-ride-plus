@@ -1,15 +1,11 @@
 
-import { useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { Car } from "lucide-react";
 import { useDriverOrders } from "@/hooks/useDriverOrders";
 import { useDriverStatus } from "@/hooks/useDriverStatus";
+import { Car } from "lucide-react";
 import DriverStatusCard from "./DriverStatusCard";
 import OrdersList from "./OrdersList";
 
 const DriverOrders = () => {
-  const { toast } = useToast();
   const { orders, isLoading, loadOrders, acceptOrder } = useDriverOrders();
   const { 
     isOnline, 
@@ -18,36 +14,6 @@ const DriverOrders = () => {
     getCurrentLocation, 
     handleOnlineToggle 
   } = useDriverStatus();
-
-  // 實時監聽新訂單
-  useEffect(() => {
-    if (!isOnline) return;
-
-    const channel = supabase
-      .channel('call_records_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'call_records',
-          filter: 'status=eq.waiting'
-        },
-        (payload) => {
-          console.log('新的叫車訂單:', payload);
-          loadOrders();
-          toast({
-            title: "新的叫車請求",
-            description: "有新的乘客需要叫車服務",
-          });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [isOnline, loadOrders, toast]);
 
   const handleAcceptOrder = (orderId: string) => {
     acceptOrder(orderId, isOnline);

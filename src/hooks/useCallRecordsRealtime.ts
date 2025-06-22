@@ -11,8 +11,10 @@ export const useCallRecordsRealtime = ({ lineUserId, onRecordUpdate }: UseCallRe
   useEffect(() => {
     if (!lineUserId) return;
 
+    console.log('設置商家實時監聽器:', lineUserId);
+
     const channel = supabase
-      .channel('call_records_updates')
+      .channel('merchant_call_records_updates')
       .on(
         'postgres_changes',
         {
@@ -22,13 +24,27 @@ export const useCallRecordsRealtime = ({ lineUserId, onRecordUpdate }: UseCallRe
           filter: `line_user_id=eq.${lineUserId}`
         },
         (payload) => {
-          console.log('叫車記錄更新:', payload);
+          console.log('商家收到叫車記錄更新:', payload);
+          onRecordUpdate(payload.new);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'call_records',
+          filter: `line_user_id=eq.${lineUserId}`
+        },
+        (payload) => {
+          console.log('商家收到新叫車記錄:', payload);
           onRecordUpdate(payload.new);
         }
       )
       .subscribe();
 
     return () => {
+      console.log('清理商家實時監聽器');
       supabase.removeChannel(channel);
     };
   }, [lineUserId, onRecordUpdate]);

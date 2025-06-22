@@ -24,8 +24,70 @@ export const useDriverOrders = () => {
     loadOrders();
   }, []);
 
+  // 實時監聽新訂單和訂單狀態變化
+  useEffect(() => {
+    console.log('設置實時監聽器 - 新訂單');
+    
+    const channel = supabase
+      .channel('driver_orders_realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'call_records',
+          filter: 'status=eq.waiting'
+        },
+        (payload) => {
+          console.log('收到新訂單:', payload);
+          const newRecord = payload.new;
+          const formattedOrder = {
+            id: newRecord.id,
+            carType: newRecord.car_type,
+            carTypeLabel: newRecord.car_type_label,
+            status: newRecord.status,
+            timestamp: new Date(newRecord.created_at),
+            favoriteType: newRecord.favorite_type,
+            favoriteInfo: newRecord.favorite_info || undefined,
+          };
+          
+          setOrders(prev => [formattedOrder, ...prev]);
+          
+          toast({
+            title: "新的叫車請求",
+            description: "有新的乘客需要叫車服務",
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'call_records'
+        },
+        (payload) => {
+          console.log('訂單狀態更新:', payload);
+          const updatedRecord = payload.new;
+          
+          // 如果訂單被接受或取消，從待接列表中移除
+          if (updatedRecord.status !== 'waiting') {
+            setOrders(prev => prev.filter(order => order.id !== updatedRecord.id));
+            console.log('移除已處理的訂單:', updatedRecord.id);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('清理實時監聽器');
+      supabase.removeChannel(channel);
+    };
+  }, [toast]);
+
   const loadOrders = async () => {
     try {
+      console.log('載入待接訂單...');
       const { data, error } = await supabase
         .from('call_records')
         .select('*')
@@ -68,6 +130,8 @@ export const useDriverOrders = () => {
     }
 
     try {
+      console.log('開始接單流程:', orderId);
+      
       // 獲取司機資料
       const { data: driverData } = await supabase
         .from('driver_profiles')
@@ -116,15 +180,15 @@ export const useDriverOrders = () => {
         return;
       }
 
+      console.log('接單成功:', updatedRecord);
       toast({
         title: "接單成功",
         description: "已成功接受訂單，乘客將收到通知",
       });
 
-      // 立即移除已接受的訂單
+      // 立即移除已接受的訂單（樂觀更新）
       setOrders(prev => prev.filter(order => order.id !== orderId));
       
-      console.log('成功接單:', updatedRecord);
     } catch (error) {
       console.error('接單錯誤:', error);
       toast({
