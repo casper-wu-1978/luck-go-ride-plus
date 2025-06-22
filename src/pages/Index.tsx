@@ -1,8 +1,10 @@
 
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLiff } from "@/contexts/LiffContext";
 import { useUserRole } from "@/hooks/useUserRole";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Car, Shield, Store } from "lucide-react";
@@ -10,17 +12,82 @@ import { Car, Shield, Store } from "lucide-react";
 const Index = () => {
   const navigate = useNavigate();
   const { profile } = useLiff();
-  const { userRole, isLoading } = useUserRole();
+  const { userRole, isLoading: roleLoading } = useUserRole();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     // 如果用戶已有角色，直接導向對應頁面
-    if (!isLoading && userRole) {
+    if (!roleLoading && userRole) {
       navigate(`/${userRole}`);
     }
-  }, [userRole, isLoading, navigate]);
+  }, [userRole, roleLoading, navigate]);
+
+  const handleRoleSelect = async (role: 'driver' | 'admin' | 'merchant') => {
+    if (!profile?.userId) {
+      toast({
+        title: "錯誤",
+        description: "無法獲取用戶資訊",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // 插入用戶角色
+      const { error: roleError } = await supabase
+        .from('user_roles')
+        .insert({
+          line_user_id: profile.userId,
+          role: role
+        });
+
+      if (roleError) {
+        console.error('角色設定錯誤:', roleError);
+        toast({
+          title: "設定失敗",
+          description: "角色設定失敗，請稍後再試",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // 根據角色創建對應的 profile
+      if (role === 'admin') {
+        await supabase.from('admin_profiles').insert({
+          line_user_id: profile.userId,
+          name: profile.displayName || '管理員',
+        });
+      } else if (role === 'merchant') {
+        await supabase.from('merchant_profiles').insert({
+          line_user_id: profile.userId,
+          business_name: '我的商家',
+          contact_name: profile.displayName || '聯絡人',
+        });
+      }
+
+      toast({
+        title: "設定成功",
+        description: `已設定為${role === 'driver' ? '司機' : role === 'admin' ? '管理員' : '商家'}身份`,
+      });
+
+      // 導向對應頁面
+      navigate(`/${role}`);
+    } catch (error) {
+      console.error('角色設定錯誤:', error);
+      toast({
+        title: "設定失敗",
+        description: "發生未知錯誤",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // 如果正在載入或已有角色，顯示載入中
-  if (isLoading || userRole) {
+  if (roleLoading || userRole) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 flex items-center justify-center">
         <div className="text-center">
@@ -30,10 +97,6 @@ const Index = () => {
       </div>
     );
   }
-
-  const handleRoleSelect = (role: string) => {
-    navigate(`/${role}`);
-  };
 
   const roles = [
     {
@@ -70,8 +133,9 @@ const Index = () => {
           <h1 className="text-5xl font-bold text-emerald-800 mb-4">Luck Go</h1>
           <p className="text-xl text-emerald-600 mb-2">您的專屬叫車平台</p>
           {profile && (
-            <p className="text-emerald-700">歡迎，{profile.displayName}</p>
+            <p className="text-emerald-700 mb-4">歡迎，{profile.displayName}</p>
           )}
+          <p className="text-emerald-600 text-lg">請選擇您的身份</p>
         </div>
 
         {/* Role Cards */}
@@ -100,10 +164,11 @@ const Index = () => {
                   </div>
                   
                   <Button
-                    onClick={() => handleRoleSelect(role.id)}
+                    onClick={() => handleRoleSelect(role.id as 'driver' | 'admin' | 'merchant')}
+                    disabled={isLoading}
                     className={`w-full ${role.color} text-white py-3 text-lg font-medium shadow-lg hover:shadow-xl transition-all duration-200`}
                   >
-                    進入{role.title}
+                    {isLoading ? '設定中...' : `選擇${role.title}`}
                   </Button>
                 </CardContent>
               </Card>

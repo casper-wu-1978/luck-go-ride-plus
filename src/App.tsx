@@ -8,7 +8,6 @@ import { LiffProvider } from "@/contexts/LiffContext";
 import { AdminAuthProvider } from "@/contexts/AdminAuthContext";
 import AuthWrapper from "@/components/AuthWrapper";
 import Index from "./pages/Index";
-import RoleSelection from "./pages/RoleSelection";
 import Driver from "./pages/Driver";
 import Admin from "./pages/Admin";
 import Merchant from "./pages/Merchant";
@@ -27,7 +26,6 @@ const App = () => (
             <AuthWrapper>
               <Routes>
                 <Route path="/" element={<Index />} />
-                <Route path="/role-selection" element={<RoleSelection />} />
                 <Route path="/driver" element={<Driver />} />
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/merchant" element={<Merchant />} />
