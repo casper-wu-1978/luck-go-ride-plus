@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useLiff } from "@/contexts/LiffContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,7 +32,56 @@ const DriverOrders = () => {
   useEffect(() => {
     loadOrders();
     loadMapboxToken();
+    checkDriverStatus();
   }, []);
+
+  // 實時監聽新訂單
+  useEffect(() => {
+    if (!isOnline) return;
+
+    const channel = supabase
+      .channel('call_records_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'call_records',
+          filter: 'status=eq.waiting'
+        },
+        (payload) => {
+          console.log('新的叫車訂單:', payload);
+          loadOrders(); // 重新載入訂單
+          toast({
+            title: "新的叫車請求",
+            description: "有新的乘客需要叫車服務",
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isOnline]);
+
+  const checkDriverStatus = async () => {
+    if (!profile?.userId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('driver_profiles')
+        .select('status')
+        .eq('line_user_id', profile.userId)
+        .single();
+
+      if (data && data.status === 'online') {
+        setIsOnline(true);
+      }
+    } catch (error) {
+      console.error('檢查司機狀態錯誤:', error);
+    }
+  };
 
   const loadMapboxToken = async () => {
     try {
@@ -133,9 +183,51 @@ const DriverOrders = () => {
     }
   };
 
+  const updateDriverStatus = async (status: 'online' | 'offline') => {
+    if (!profile?.userId) return;
+
+    try {
+      // 先檢查是否已有司機資料
+      const { data: existingDriver } = await supabase
+        .from('driver_profiles')
+        .select('*')
+        .eq('line_user_id', profile.userId)
+        .single();
+
+      if (!existingDriver) {
+        // 如果沒有司機資料，先創建一個
+        await supabase
+          .from('driver_profiles')
+          .insert({
+            line_user_id: profile.userId,
+            name: profile.displayName || '司機',
+            status: status,
+            vehicle_type: '一般車輛',
+            vehicle_brand: 'Toyota',
+            vehicle_color: '白色',
+            plate_number: 'ABC-1234'
+          });
+      } else {
+        // 更新司機狀態
+        await supabase
+          .from('driver_profiles')
+          .update({ 
+            status: status,
+            updated_at: new Date().toISOString()
+          })
+          .eq('line_user_id', profile.userId);
+      }
+    } catch (error) {
+      console.error('更新司機狀態錯誤:', error);
+    }
+  };
+
   const handleOnlineToggle = async (checked: boolean) => {
     if (checked) {
       await getCurrentLocation();
+      await updateDriverStatus('online');
+    } else {
+      await updateDriverStatus('offline');
     }
     setIsOnline(checked);
     
@@ -156,25 +248,33 @@ const DriverOrders = () => {
     }
 
     try {
+      // 獲取司機資料
+      const { data: driverData } = await supabase
+        .from('driver_profiles')
+        .select('*')
+        .eq('line_user_id', profile.userId)
+        .single();
+
       const { error } = await supabase
         .from('call_records')
         .update({
           status: 'matched',
           driver_id: profile.userId,
-          driver_name: profile.displayName || '司機',
-          driver_phone: '0900-000-000',
-          driver_plate_number: 'ABC-1234',
-          driver_car_brand: 'Toyota',
-          driver_car_color: '白色',
+          driver_name: driverData?.name || profile.displayName || '司機',
+          driver_phone: driverData?.phone || '0900-000-000',
+          driver_plate_number: driverData?.plate_number || 'ABC-1234',
+          driver_car_brand: driverData?.vehicle_brand || 'Toyota',
+          driver_car_color: driverData?.vehicle_color || '白色',
           accepted_at: new Date().toISOString()
         })
-        .eq('id', orderId);
+        .eq('id', orderId)
+        .eq('status', 'waiting'); // 確保只能接受等待中的訂單
 
       if (error) {
         console.error('接單錯誤:', error);
         toast({
           title: "接單失敗",
-          description: "請稍後再試",
+          description: "此訂單可能已被其他司機接受",
           variant: "destructive",
         });
         return;
@@ -182,12 +282,17 @@ const DriverOrders = () => {
 
       toast({
         title: "接單成功",
-        description: "已成功接受訂單",
+        description: "已成功接受訂單，乘客將收到通知",
       });
 
-      loadOrders();
+      loadOrders(); // 重新載入訂單列表
     } catch (error) {
       console.error('接單錯誤:', error);
+      toast({
+        title: "接單失敗",
+        description: "請稍後再試",
+        variant: "destructive",
+      });
     }
   };
 

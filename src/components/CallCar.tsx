@@ -1,9 +1,11 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useLiff } from "@/contexts/LiffContext";
 import { CallRecord, FavoriteCode, FavoriteAddress } from "@/types/callCar";
 import { CAR_TYPES, MAX_CALL_RECORDS } from "@/constants/callCar";
 import { loadFavorites, loadCallRecords, createCallRecord, updateCallRecord } from "@/utils/callCarApi";
+import { matchDriver, getOnlineDrivers } from "@/utils/driverMatching";
 import { supabase } from "@/integrations/supabase/client";
 import { UserProfile } from "@/types/profile";
 import CallForm from "./callCar/CallForm";
@@ -21,11 +23,13 @@ const CallCar = () => {
   const [favoriteCodes, setFavoriteCodes] = useState<FavoriteCode[]>([]);
   const [favoriteAddresses, setFavoriteAddresses] = useState<FavoriteAddress[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [onlineDriversCount, setOnlineDriversCount] = useState(0);
   const { toast } = useToast();
 
   useEffect(() => {
     if (liffProfile?.userId) {
       loadUserData();
+      loadOnlineDriversCount();
     }
   }, [liffProfile]);
 
@@ -42,6 +46,15 @@ const CallCar = () => {
 
     // Load user profile from database
     await loadUserProfile();
+  };
+
+  const loadOnlineDriversCount = async () => {
+    try {
+      const onlineDrivers = await getOnlineDrivers();
+      setOnlineDriversCount(onlineDrivers.length);
+    } catch (error) {
+      console.error('載入線上司機數量錯誤:', error);
+    }
   };
 
   const loadUserProfile = async () => {
@@ -134,6 +147,16 @@ const CallCar = () => {
       return;
     }
 
+    // 檢查是否有線上司機
+    if (onlineDriversCount === 0) {
+      toast({
+        title: "目前無可用司機",
+        description: "請稍後再試，或聯繫客服協助",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsLoading(true);
     
     const selectedCarType = CAR_TYPES.find(type => type.id === carType);
@@ -146,6 +169,7 @@ const CallCar = () => {
     }
     
     try {
+      // 建立叫車記錄
       const newCallRecord = await createCallRecord(
         liffProfile.userId,
         carType,
@@ -156,52 +180,88 @@ const CallCar = () => {
 
       setCallRecords(prev => [newCallRecord, ...prev.slice(0, MAX_CALL_RECORDS - 1)]);
       
-      // Simulate call car process
+      toast({
+        title: "叫車請求已送出",
+        description: "正在為您媒合司機，請稍候...",
+      });
+
+      // 開始真實的司機媒合
       setTimeout(async () => {
-        const success = Math.random() > 0.3; // 70% success rate
-        
-        const driverInfo = success ? {
-          name: "王師傅",
-          phone: "0987-654-321",
-          plateNumber: "ABC-1234",
-          carBrand: "Toyota",
-          carColor: "白色"
-        } : undefined;
-        
         try {
-          await updateCallRecord(
-            newCallRecord.id,
-            success ? 'matched' : 'failed',
-            driverInfo,
-            liffProfile.userId // Pass LINE User ID for notification
-          );
+          const matchedDriver = await matchDriver(carType);
+          
+          if (matchedDriver) {
+            // 媒合成功
+            const driverInfo = {
+              name: matchedDriver.name,
+              phone: matchedDriver.phone,
+              plateNumber: matchedDriver.plate_number,
+              carBrand: matchedDriver.car_brand,
+              carColor: matchedDriver.car_color
+            };
 
-          setCallRecords(prev => 
-            prev.map(record => 
-              record.id === newCallRecord.id 
-                ? { ...record, status: success ? 'matched' : 'failed', driverInfo }
-                : record
-            )
-          );
+            await updateCallRecord(
+              newCallRecord.id,
+              'matched',
+              driverInfo,
+              liffProfile.userId
+            );
 
-          if (success) {
+            setCallRecords(prev => 
+              prev.map(record => 
+                record.id === newCallRecord.id 
+                  ? { ...record, status: 'matched', driverInfo }
+                  : record
+              )
+            );
+
             toast({
               title: "叫車成功！",
-              description: `已媒合${selectedCarType?.label}司機，預計5分鐘後到達`,
+              description: `已媒合司機${driverInfo.name}，預計5分鐘後到達`,
             });
+
+            // 重新載入線上司機數量
+            await loadOnlineDriversCount();
           } else {
+            // 媒合失敗
+            await updateCallRecord(newCallRecord.id, 'failed');
+
+            setCallRecords(prev => 
+              prev.map(record => 
+                record.id === newCallRecord.id 
+                  ? { ...record, status: 'failed' }
+                  : record
+              )
+            );
+
             toast({
               title: "叫車失敗",
-              description: "未能找到合適的司機，請稍後再試",
+              description: "目前沒有可用的司機，請稍後再試",
               variant: "destructive"
             });
           }
         } catch (error) {
-          console.error('更新叫車記錄錯誤:', error);
+          console.error('司機媒合錯誤:', error);
+          
+          await updateCallRecord(newCallRecord.id, 'failed');
+          
+          setCallRecords(prev => 
+            prev.map(record => 
+              record.id === newCallRecord.id 
+                ? { ...record, status: 'failed' }
+                : record
+            )
+          );
+
+          toast({
+            title: "叫車失敗",
+            description: "媒合過程發生錯誤，請稍後再試",
+            variant: "destructive"
+          });
         }
         
         setIsLoading(false);
-      }, 3000);
+      }, 2000); // 2秒後開始媒合（給用戶一個處理中的感覺）
     } catch (error) {
       console.error('叫車錯誤:', error);
       toast({
@@ -241,6 +301,29 @@ const CallCar = () => {
 
   return (
     <div className="space-y-4">
+      {/* 線上司機狀態 */}
+      <div className="bg-white rounded-lg p-4 shadow-sm border">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <div className={`w-3 h-3 rounded-full ${onlineDriversCount > 0 ? 'bg-green-500' : 'bg-red-500'}`}></div>
+            <span className="text-sm font-medium text-gray-700">
+              線上司機: {onlineDriversCount} 位
+            </span>
+          </div>
+          <button
+            onClick={loadOnlineDriversCount}
+            className="text-xs text-blue-600 hover:text-blue-800"
+          >
+            重新整理
+          </button>
+        </div>
+        {onlineDriversCount === 0 && (
+          <p className="text-xs text-red-600 mt-1">
+            目前沒有線上司機，請稍後再試
+          </p>
+        )}
+      </div>
+
       <CallForm
         carType={carType}
         setCarType={setCarType}
