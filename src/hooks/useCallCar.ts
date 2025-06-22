@@ -1,133 +1,62 @@
 
-
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useLiff } from "@/contexts/LiffContext";
-import { CallRecord, FavoriteCode, FavoriteAddress } from "@/types/callCar";
 import { CAR_TYPES, MAX_CALL_RECORDS } from "@/constants/callCar";
-import { loadFavorites, loadCallRecords, createCallRecord, updateCallRecord } from "@/utils/callCarApi";
-import { getOnlineDrivers } from "@/utils/driverMatching";
-import { UserProfile } from "@/types/profile";
-import { supabase } from "@/integrations/supabase/client";
+import { useCallRecords } from "./useCallRecords";
+import { useFavorites } from "./useFavorites";
+import { useOnlineDrivers } from "./useOnlineDrivers";
+import { useCallRecordsRealtime } from "./useCallRecordsRealtime";
+import { useCallCarForm } from "./useCallCarForm";
 
 export const useCallCar = () => {
   const { profile: liffProfile } = useLiff();
   const [isLoading, setIsLoading] = useState(false);
-  const [carType, setCarType] = useState("unlimited");
-  const [favoriteType, setFavoriteType] = useState("none");
-  const [selectedCode, setSelectedCode] = useState("");
-  const [selectedAddressName, setSelectedAddressName] = useState("");
-  const [selectedAddress, setSelectedAddress] = useState("");
-  const [callRecords, setCallRecords] = useState<CallRecord[]>([]);
-  const [favoriteCodes, setFavoriteCodes] = useState<FavoriteCode[]>([]);
-  const [favoriteAddresses, setFavoriteAddresses] = useState<FavoriteAddress[]>([]);
-  const [onlineDriversCount, setOnlineDriversCount] = useState(0);
   const { toast } = useToast();
 
-  const loadOnlineDriversCount = async () => {
-    try {
-      const onlineDrivers = await getOnlineDrivers();
-      setOnlineDriversCount(onlineDrivers.length);
-      console.log('載入線上司機數量:', onlineDrivers.length);
-    } catch (error) {
-      console.error('載入線上司機數量錯誤:', error);
-    }
-  };
+  // Use the new focused hooks
+  const {
+    callRecords,
+    loadRecords,
+    createRecord,
+    cancelRecord,
+    updateRecordFromRealtime,
+  } = useCallRecords(liffProfile?.userId);
 
-  // 監聽司機狀態變化
-  useEffect(() => {
-    loadOnlineDriversCount();
+  const {
+    favoriteCodes,
+    favoriteAddresses,
+    loadUserFavorites,
+  } = useFavorites();
 
-    const channel = supabase
-      .channel('driver_status_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'driver_profiles'
-        },
-        (payload) => {
-          console.log('司機狀態變化:', payload);
-          // 重新載入線上司機數量
-          loadOnlineDriversCount();
-        }
-      )
-      .subscribe();
+  const {
+    onlineDriversCount,
+    loadOnlineDriversCount,
+  } = useOnlineDrivers();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+  const {
+    carType,
+    favoriteType,
+    selectedCode,
+    selectedAddressName,
+    selectedAddress,
+    setCarType,
+    setFavoriteType,
+    setSelectedCode,
+    setSelectedAddressName,
+    setSelectedAddress,
+  } = useCallCarForm();
 
-  // 監聽叫車記錄變化（司機接單）
-  useEffect(() => {
-    if (!liffProfile?.userId) return;
-
-    const channel = supabase
-      .channel('call_records_updates')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'call_records',
-          filter: `line_user_id=eq.${liffProfile.userId}`
-        },
-        (payload) => {
-          console.log('叫車記錄更新:', payload);
-          const updatedRecord = payload.new;
-          
-          // 更新本地狀態
-          setCallRecords(prev => 
-            prev.map(record => 
-              record.id === updatedRecord.id 
-                ? {
-                    ...record,
-                    status: updatedRecord.status as 'waiting' | 'matched' | 'failed' | 'cancelled',
-                    driverInfo: updatedRecord.driver_name ? {
-                      name: updatedRecord.driver_name,
-                      phone: updatedRecord.driver_phone || '',
-                      plateNumber: updatedRecord.driver_plate_number || '',
-                      carBrand: updatedRecord.driver_car_brand || '',
-                      carColor: updatedRecord.driver_car_color || ''
-                    } : undefined
-                  }
-                : record
-            )
-          );
-
-          // 顯示通知
-          if (updatedRecord.status === 'matched') {
-            toast({
-              title: "叫車成功！",
-              description: `司機 ${updatedRecord.driver_name} 已接單，請準備上車`,
-            });
-          } else if (updatedRecord.status === 'failed') {
-            toast({
-              title: "叫車失敗",
-              description: "未能找到合適的司機，請稍後再試",
-              variant: "destructive"
-            });
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [liffProfile?.userId, toast]);
+  // Set up real-time listener for call records
+  useCallRecordsRealtime({
+    lineUserId: liffProfile?.userId,
+    onRecordUpdate: updateRecordFromRealtime,
+  });
 
   const loadUserData = async () => {
     if (!liffProfile?.userId) return;
-
-    const { codes, addresses } = await loadFavorites(liffProfile.userId);
-    setFavoriteCodes(codes);
-    setFavoriteAddresses(addresses);
-
-    const records = await loadCallRecords(liffProfile.userId);
-    setCallRecords(records);
+    await loadUserFavorites(liffProfile.userId);
+    await loadRecords();
   };
 
   const handleCallCar = async () => {
@@ -188,15 +117,12 @@ export const useCallCar = () => {
     }
     
     try {
-      const newCallRecord = await createCallRecord(
-        liffProfile.userId,
+      await createRecord(
         carType,
         selectedCarType?.label || "不限",
         favoriteType,
         favoriteInfo
       );
-
-      setCallRecords(prev => [newCallRecord, ...prev.slice(0, MAX_CALL_RECORDS - 1)]);
       
       toast({
         title: "叫車請求已送出",
@@ -217,16 +143,7 @@ export const useCallCar = () => {
 
   const handleCancelCall = async (recordId: string) => {
     try {
-      await updateCallRecord(recordId, 'cancelled');
-
-      setCallRecords(prev => 
-        prev.map(record => 
-          record.id === recordId 
-            ? { ...record, status: 'cancelled' }
-            : record
-        )
-      );
-
+      await cancelRecord(recordId);
       toast({
         title: "已取消叫車",
         description: "您的叫車請求已成功取消",
@@ -268,4 +185,3 @@ export const useCallCar = () => {
     loadUserData,
   };
 };
-
