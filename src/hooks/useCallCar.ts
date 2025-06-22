@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useLiff } from "@/contexts/LiffContext";
@@ -7,6 +6,7 @@ import { CAR_TYPES, MAX_CALL_RECORDS } from "@/constants/callCar";
 import { loadFavorites, loadCallRecords, createCallRecord, updateCallRecord } from "@/utils/callCarApi";
 import { matchDriver, getOnlineDrivers } from "@/utils/driverMatching";
 import { UserProfile } from "@/types/profile";
+import { supabase } from "@/integrations/supabase/client";
 
 export const useCallCar = () => {
   const { profile: liffProfile } = useLiff();
@@ -30,6 +30,33 @@ export const useCallCar = () => {
       console.error('載入線上司機數量錯誤:', error);
     }
   };
+
+  // 監聽司機狀態變化
+  useEffect(() => {
+    loadOnlineDriversCount();
+
+    const channel = supabase
+      .channel('driver_status_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'driver_profiles',
+          filter: 'status=in.(online,offline)'
+        },
+        (payload) => {
+          console.log('司機狀態變化:', payload);
+          // 重新載入線上司機數量
+          loadOnlineDriversCount();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const loadUserData = async () => {
     if (!liffProfile?.userId) return;
