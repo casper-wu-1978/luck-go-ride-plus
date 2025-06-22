@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -59,6 +58,12 @@ export const useCallRecords = (lineUserId?: string) => {
     console.log('🔥 商家端 - 更新前的狀態:', updatedRecord.status);
     console.log('🔥 商家端 - 司機資訊:', updatedRecord.driver_name ? `${updatedRecord.driver_name} (${updatedRecord.driver_phone})` : '無');
     
+    // 顯示處理實時更新的提示
+    toast({
+      title: "🔥 處理實時更新",
+      description: `記錄ID: ${updatedRecord.id?.slice(-4)}, 狀態: ${updatedRecord.status}`,
+    });
+    
     setCallRecords(prev => {
       console.log('🔥 商家端 - 當前記錄列表:', prev.map(r => ({ id: r.id, status: r.status })));
       
@@ -66,6 +71,12 @@ export const useCallRecords = (lineUserId?: string) => {
       console.log('🔥 商家端 - 找到的記錄索引:', existingIndex);
       
       if (existingIndex >= 0) {
+        // 顯示找到現有記錄的提示
+        toast({
+          title: "🔥 更新現有記錄",
+          description: `索引: ${existingIndex}, 新狀態: ${updatedRecord.status}`,
+        });
+        
         // 更新現有記錄
         const updatedRecords = [...prev];
         const oldRecord = updatedRecords[existingIndex];
@@ -88,6 +99,12 @@ export const useCallRecords = (lineUserId?: string) => {
         
         return updatedRecords;
       } else {
+        // 顯示創建新記錄的提示
+        toast({
+          title: "🔥 創建新記錄",
+          description: `找不到現有記錄，創建新記錄: ${updatedRecord.id?.slice(-4)}`,
+        });
+        
         // 新記錄（通常不會發生，因為INSERT事件應該通過createRecord處理）
         console.log('🔥 商家端 - 找不到現有記錄，創建新記錄');
         const newRecord: CallRecord = {
