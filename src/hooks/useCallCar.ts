@@ -6,7 +6,6 @@ import { CAR_TYPES, MAX_CALL_RECORDS } from "@/constants/callCar";
 import { useCallRecords } from "./useCallRecords";
 import { useFavorites } from "./useFavorites";
 import { useOnlineDrivers } from "./useOnlineDrivers";
-import { useCallRecordsRealtime } from "./useCallRecordsRealtime";
 import { useCallCarForm } from "./useCallCarForm";
 
 export const useCallCar = () => {
@@ -14,7 +13,7 @@ export const useCallCar = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  // Use the new focused hooks
+  // Use the focused hooks
   const {
     callRecords,
     loadRecords,
@@ -46,13 +45,6 @@ export const useCallCar = () => {
     setSelectedAddressName,
     setSelectedAddress,
   } = useCallCarForm();
-
-  // Set up real-time listener for call records - 確保商家端實時監聽器啟動
-  console.log('商家端 - 設置實時監聽器，用戶ID:', liffProfile?.userId);
-  useCallRecordsRealtime({
-    lineUserId: liffProfile?.userId,
-    onRecordUpdate: updateRecordFromRealtime,
-  });
 
   const loadUserData = async () => {
     if (!liffProfile?.userId) return;
@@ -184,6 +176,6 @@ export const useCallCar = () => {
     handleCancelCall,
     loadOnlineDriversCount,
     loadUserData,
-    updateRecordFromRealtime, // Added this missing function
+    updateRecordFromRealtime,
   };
 };
