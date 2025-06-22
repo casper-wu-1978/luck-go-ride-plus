@@ -41,8 +41,14 @@ export const useCallRecordsRealtime = ({ lineUserId, onRecordUpdate }: UseCallRe
           onRecordUpdate(payload.new);
         }
       )
-      .subscribe((status) => {
+      .subscribe((status, err) => {
         console.log('商家實時監聽狀態:', status);
+        if (err) {
+          console.error('商家實時監聽錯誤:', err);
+        }
+        if (status === 'SUBSCRIBED') {
+          console.log('商家實時監聽已成功訂閱');
+        }
       });
 
     return () => {

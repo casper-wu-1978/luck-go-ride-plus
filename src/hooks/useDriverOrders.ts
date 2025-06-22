@@ -73,12 +73,18 @@ export const useDriverOrders = () => {
           // 如果訂單被接受或取消，從待接列表中移除
           if (updatedRecord.status !== 'waiting') {
             setOrders(prev => prev.filter(order => order.id !== updatedRecord.id));
-            console.log('移除已處理的訂單:', updatedRecord.id);
+            console.log('移除已處理的訂單:', updatedRecord.id, '狀態:', updatedRecord.status);
           }
         }
       )
-      .subscribe((status) => {
+      .subscribe((status, err) => {
         console.log('司機實時監聽狀態:', status);
+        if (err) {
+          console.error('司機實時監聽錯誤:', err);
+        }
+        if (status === 'SUBSCRIBED') {
+          console.log('司機實時監聽已成功訂閱');
+        }
       });
 
     return () => {
