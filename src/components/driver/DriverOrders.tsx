@@ -51,7 +51,7 @@ const DriverOrders = () => {
         },
         (payload) => {
           console.log('新的叫車訂單:', payload);
-          loadOrders(); // 重新載入訂單
+          loadOrders();
           toast({
             title: "新的叫車請求",
             description: "有新的乘客需要叫車服務",
@@ -73,7 +73,12 @@ const DriverOrders = () => {
         .from('driver_profiles')
         .select('status')
         .eq('line_user_id', profile.userId)
-        .single();
+        .maybeSingle();
+
+      if (error) {
+        console.error('檢查司機狀態錯誤:', error);
+        return;
+      }
 
       if (data && data.status === 'online') {
         setIsOnline(true);
@@ -150,7 +155,6 @@ const DriverOrders = () => {
 
       const { latitude, longitude } = position.coords;
       
-      // 使用 Mapbox 反向地理編碼獲取地址
       const response = await fetch(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${mapboxToken}&language=zh-TW`
       );
@@ -184,23 +188,34 @@ const DriverOrders = () => {
   };
 
   const updateDriverStatus = async (status: 'online' | 'offline') => {
-    if (!profile?.userId) return;
+    if (!profile?.userId) {
+      console.error('無法取得用戶ID');
+      return;
+    }
 
     try {
-      // 先檢查是否已有司機資料
-      const { data: existingDriver } = await supabase
+      console.log('更新司機狀態:', { userId: profile.userId, status });
+
+      // 檢查是否已有司機資料
+      const { data: existingDriver, error: checkError } = await supabase
         .from('driver_profiles')
         .select('*')
         .eq('line_user_id', profile.userId)
-        .single();
+        .maybeSingle();
+
+      if (checkError) {
+        console.error('檢查司機資料錯誤:', checkError);
+        throw checkError;
+      }
 
       if (!existingDriver) {
-        // 如果沒有司機資料，先創建一個
-        await supabase
+        console.log('創建新司機資料');
+        // 創建新司機資料
+        const { error: insertError } = await supabase
           .from('driver_profiles')
           .insert({
             line_user_id: profile.userId,
-            driver_id: profile.userId, // 添加必需的 driver_id 欄位
+            driver_id: profile.userId,
             name: profile.displayName || '司機',
             status: status,
             vehicle_type: '一般車輛',
@@ -208,34 +223,56 @@ const DriverOrders = () => {
             vehicle_color: '白色',
             plate_number: 'ABC-1234'
           });
+
+        if (insertError) {
+          console.error('創建司機資料錯誤:', insertError);
+          throw insertError;
+        }
       } else {
+        console.log('更新現有司機狀態');
         // 更新司機狀態
-        await supabase
+        const { error: updateError } = await supabase
           .from('driver_profiles')
           .update({ 
             status: status,
             updated_at: new Date().toISOString()
           })
           .eq('line_user_id', profile.userId);
+
+        if (updateError) {
+          console.error('更新司機狀態錯誤:', updateError);
+          throw updateError;
+        }
       }
+
+      console.log('司機狀態更新成功:', status);
     } catch (error) {
-      console.error('更新司機狀態錯誤:', error);
+      console.error('更新司機狀態失敗:', error);
+      throw error;
     }
   };
 
   const handleOnlineToggle = async (checked: boolean) => {
-    if (checked) {
-      await getCurrentLocation();
-      await updateDriverStatus('online');
-    } else {
-      await updateDriverStatus('offline');
+    try {
+      if (checked) {
+        await getCurrentLocation();
+      }
+      
+      await updateDriverStatus(checked ? 'online' : 'offline');
+      setIsOnline(checked);
+      
+      toast({
+        title: checked ? "已上線" : "已下線",
+        description: checked ? "開始接收訂單通知" : "停止接收訂單通知",
+      });
+    } catch (error) {
+      console.error('切換狀態失敗:', error);
+      toast({
+        title: "狀態更新失敗",
+        description: "請稍後再試",
+        variant: "destructive",
+      });
     }
-    setIsOnline(checked);
-    
-    toast({
-      title: checked ? "已上線" : "已下線",
-      description: checked ? "開始接收訂單通知" : "停止接收訂單通知",
-    });
   };
 
   const acceptOrder = async (orderId: string) => {
@@ -269,7 +306,7 @@ const DriverOrders = () => {
           accepted_at: new Date().toISOString()
         })
         .eq('id', orderId)
-        .eq('status', 'waiting'); // 確保只能接受等待中的訂單
+        .eq('status', 'waiting');
 
       if (error) {
         console.error('接單錯誤:', error);
@@ -286,7 +323,7 @@ const DriverOrders = () => {
         description: "已成功接受訂單，乘客將收到通知",
       });
 
-      loadOrders(); // 重新載入訂單列表
+      loadOrders();
     } catch (error) {
       console.error('接單錯誤:', error);
       toast({
