@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useLiff } from "@/contexts/LiffContext";
@@ -183,5 +184,6 @@ export const useCallCar = () => {
     handleCancelCall,
     loadOnlineDriversCount,
     loadUserData,
+    updateRecordFromRealtime, // Added this missing function
   };
 };
