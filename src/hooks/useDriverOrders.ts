@@ -18,10 +18,12 @@ export const useDriverOrders = () => {
   const { profile } = useLiff();
   const { toast } = useToast();
   const [orders, setOrders] = useState<CallRecord[]>([]);
+  const [acceptedOrders, setAcceptedOrders] = useState<CallRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     loadOrders();
+    loadAcceptedOrders();
   }, []);
 
   // 實時監聽新訂單和訂單狀態變化
@@ -74,6 +76,20 @@ export const useDriverOrders = () => {
           if (updatedRecord.status !== 'waiting') {
             setOrders(prev => prev.filter(order => order.id !== updatedRecord.id));
             console.log('移除已處理的訂單:', updatedRecord.id, '狀態:', updatedRecord.status);
+            
+            // 如果是本司機接受的訂單，加入已接列表
+            if (updatedRecord.status === 'matched' && updatedRecord.driver_id === profile?.userId) {
+              const formattedOrder = {
+                id: updatedRecord.id,
+                carType: updatedRecord.car_type,
+                carTypeLabel: updatedRecord.car_type_label,
+                status: updatedRecord.status,
+                timestamp: new Date(updatedRecord.created_at),
+                favoriteType: updatedRecord.favorite_type,
+                favoriteInfo: updatedRecord.favorite_info || undefined,
+              };
+              setAcceptedOrders(prev => [formattedOrder, ...prev]);
+            }
           }
         }
       )
@@ -91,7 +107,7 @@ export const useDriverOrders = () => {
       console.log('清理司機實時監聽器');
       supabase.removeChannel(channel);
     };
-  }, [toast]);
+  }, [toast, profile?.userId]);
 
   const loadOrders = async () => {
     try {
@@ -124,6 +140,41 @@ export const useDriverOrders = () => {
       console.error('載入訂單錯誤:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadAcceptedOrders = async () => {
+    if (!profile?.userId) return;
+    
+    try {
+      console.log('載入已接訂單...');
+      const { data, error } = await supabase
+        .from('call_records')
+        .select('*')
+        .eq('driver_id', profile.userId)
+        .eq('status', 'matched')
+        .order('accepted_at', { ascending: false })
+        .limit(5);
+
+      if (error) {
+        console.error('載入已接訂單錯誤:', error);
+        return;
+      }
+
+      const formattedOrders = (data || []).map(record => ({
+        id: record.id,
+        carType: record.car_type,
+        carTypeLabel: record.car_type_label,
+        status: record.status,
+        timestamp: new Date(record.created_at),
+        favoriteType: record.favorite_type,
+        favoriteInfo: record.favorite_info || undefined,
+      }));
+
+      setAcceptedOrders(formattedOrders);
+      console.log('載入已接訂單:', formattedOrders.length, '筆');
+    } catch (error) {
+      console.error('載入已接訂單錯誤:', error);
     }
   };
 
@@ -197,6 +248,9 @@ export const useDriverOrders = () => {
       // 立即移除已接受的訂單（樂觀更新）
       setOrders(prev => prev.filter(order => order.id !== orderId));
       
+      // 重新載入已接訂單
+      loadAcceptedOrders();
+      
     } catch (error) {
       console.error('接單錯誤:', error);
       toast({
@@ -207,10 +261,81 @@ export const useDriverOrders = () => {
     }
   };
 
+  const handleNavigate = (orderId: string) => {
+    toast({
+      title: "開啟導航",
+      description: "即將開啟地圖導航",
+    });
+    // TODO: 實現導航功能
+  };
+
+  const handleCancelOrder = async (orderId: string) => {
+    try {
+      const { error } = await supabase
+        .from('call_records')
+        .update({ status: 'failed' })
+        .eq('id', orderId)
+        .eq('driver_id', profile?.userId);
+
+      if (error) {
+        console.error('取消訂單錯誤:', error);
+        toast({
+          title: "取消失敗",
+          description: "無法取消訂單",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setAcceptedOrders(prev => prev.filter(order => order.id !== orderId));
+      toast({
+        title: "訂單已取消",
+        description: "已成功取消訂單",
+      });
+    } catch (error) {
+      console.error('取消訂單錯誤:', error);
+    }
+  };
+
+  const handleCompleteOrder = async (orderId: string) => {
+    try {
+      const { error } = await supabase
+        .from('call_records')
+        .update({ 
+          status: 'completed',
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', orderId)
+        .eq('driver_id', profile?.userId);
+
+      if (error) {
+        console.error('完成訂單錯誤:', error);
+        toast({
+          title: "操作失敗",
+          description: "無法完成訂單",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setAcceptedOrders(prev => prev.filter(order => order.id !== orderId));
+      toast({
+        title: "訂單已完成",
+        description: "乘客已上車，訂單完成",
+      });
+    } catch (error) {
+      console.error('完成訂單錯誤:', error);
+    }
+  };
+
   return {
     orders,
+    acceptedOrders,
     isLoading,
     loadOrders,
-    acceptOrder
+    acceptOrder,
+    handleNavigate,
+    handleCancelOrder,
+    handleCompleteOrder
   };
 };

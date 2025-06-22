@@ -4,9 +4,19 @@ import { useDriverStatus } from "@/hooks/useDriverStatus";
 import { Car } from "lucide-react";
 import DriverStatusCard from "./DriverStatusCard";
 import OrdersList from "./OrdersList";
+import AcceptedOrderCard from "./AcceptedOrderCard";
 
 const DriverOrders = () => {
-  const { orders, isLoading, loadOrders, acceptOrder } = useDriverOrders();
+  const { 
+    orders, 
+    acceptedOrders, 
+    isLoading, 
+    loadOrders, 
+    acceptOrder,
+    handleNavigate,
+    handleCancelOrder,
+    handleCompleteOrder
+  } = useDriverOrders();
   const { 
     isOnline, 
     currentLocation, 
@@ -40,6 +50,29 @@ const DriverOrders = () => {
         onGetCurrentLocation={getCurrentLocation}
       />
 
+      {/* 已接訂單區域 */}
+      {acceptedOrders.length > 0 && (
+        <div className="space-y-4">
+          <div className="text-center mb-4">
+            <h2 className="text-xl font-bold text-blue-800 mb-2">進行中的訂單</h2>
+            <p className="text-blue-600">共 {acceptedOrders.length} 筆進行中訂單</p>
+          </div>
+          
+          <div className="space-y-3">
+            {acceptedOrders.map((order) => (
+              <AcceptedOrderCard
+                key={order.id}
+                order={order}
+                onNavigate={handleNavigate}
+                onCancel={handleCancelOrder}
+                onComplete={handleCompleteOrder}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 待接訂單區域 */}
       <div className="text-center mb-6">
         <h2 className="text-xl font-bold text-blue-800 mb-2">待接訂單</h2>
         <p className="text-blue-600">共 {orders.length} 筆待接訂單</p>
