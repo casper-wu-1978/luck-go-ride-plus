@@ -32,9 +32,15 @@ const CallCar = () => {
   const { userProfile } = useCallCarProfile();
 
   useEffect(() => {
+    console.log('CallCar 組件載入，開始載入數據');
     loadUserData();
     loadOnlineDriversCount();
   }, []);
+
+  // 添加調試日誌
+  useEffect(() => {
+    console.log('CallCar - 叫車記錄更新:', callRecords.length, callRecords);
+  }, [callRecords]);
 
   return (
     <div className="space-y-4">

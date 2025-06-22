@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useLiff } from "@/contexts/LiffContext";
@@ -47,7 +46,8 @@ export const useCallCar = () => {
     setSelectedAddress,
   } = useCallCarForm();
 
-  // Set up real-time listener for call records
+  // Set up real-time listener for call records - 確保商家端實時監聽器啟動
+  console.log('商家端 - 設置實時監聽器，用戶ID:', liffProfile?.userId);
   useCallRecordsRealtime({
     lineUserId: liffProfile?.userId,
     onRecordUpdate: updateRecordFromRealtime,
