@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useLiff } from "@/contexts/LiffContext";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -16,13 +16,6 @@ const Index = () => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    // 如果用戶已有角色，直接導向對應頁面
-    if (!roleLoading && userRole) {
-      navigate(`/${userRole}`);
-    }
-  }, [userRole, roleLoading, navigate]);
-
   const handleRoleSelect = async (role: 'driver' | 'admin' | 'merchant') => {
     if (!profile?.userId) {
       toast({
@@ -35,7 +28,15 @@ const Index = () => {
 
     setIsLoading(true);
     try {
-      // 插入用戶角色
+      // 如果用戶已有角色，先刪除舊角色
+      if (userRole) {
+        await supabase
+          .from('user_roles')
+          .delete()
+          .eq('line_user_id', profile.userId);
+      }
+
+      // 插入新的用戶角色
       const { error: roleError } = await supabase
         .from('user_roles')
         .insert({
@@ -55,12 +56,12 @@ const Index = () => {
 
       // 根據角色創建對應的 profile
       if (role === 'admin') {
-        await supabase.from('admin_profiles').insert({
+        await supabase.from('admin_profiles').upsert({
           line_user_id: profile.userId,
           name: profile.displayName || '管理員',
         });
       } else if (role === 'merchant') {
-        await supabase.from('merchant_profiles').insert({
+        await supabase.from('merchant_profiles').upsert({
           line_user_id: profile.userId,
           business_name: '我的商家',
           contact_name: profile.displayName || '聯絡人',
@@ -86,8 +87,8 @@ const Index = () => {
     }
   };
 
-  // 如果正在載入或已有角色，顯示載入中
-  if (roleLoading || userRole) {
+  // 如果正在載入角色資訊，顯示載入中
+  if (roleLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 flex items-center justify-center">
         <div className="text-center">
@@ -136,6 +137,16 @@ const Index = () => {
             <p className="text-emerald-700 mb-4">歡迎，{profile.displayName}</p>
           )}
           <p className="text-emerald-600 text-lg">請選擇您的身份</p>
+          {userRole && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4 max-w-md mx-auto">
+              <p className="text-blue-800 text-sm">
+                目前身份：{userRole === 'driver' ? '司機' : userRole === 'admin' ? '管理員' : '商家'}
+              </p>
+              <p className="text-blue-600 text-xs mt-1">
+                您可以切換到其他身份或繼續使用目前身份
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Role Cards */}
@@ -168,7 +179,8 @@ const Index = () => {
                     disabled={isLoading}
                     className={`w-full ${role.color} text-white py-3 text-lg font-medium shadow-lg hover:shadow-xl transition-all duration-200`}
                   >
-                    {isLoading ? '設定中...' : `選擇${role.title}`}
+                    {isLoading ? '設定中...' : 
+                     userRole === role.id ? `進入${role.title}` : `選擇${role.title}`}
                   </Button>
                 </CardContent>
               </Card>
@@ -179,7 +191,7 @@ const Index = () => {
         {/* Bottom Info */}
         <div className="text-center mt-12">
           <p className="text-sm text-emerald-600 mb-4">
-            選擇身份後可以隨時切換，或聯繫管理員協助
+            選擇身份後可以隨時回到此頁面切換角色
           </p>
           <div className="flex justify-center space-x-4 text-xs text-emerald-500">
             <span>• 安全可靠</span>
