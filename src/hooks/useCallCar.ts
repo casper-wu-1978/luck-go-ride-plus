@@ -26,6 +26,7 @@ export const useCallCar = () => {
     try {
       const onlineDrivers = await getOnlineDrivers();
       setOnlineDriversCount(onlineDrivers.length);
+      console.log('載入線上司機數量:', onlineDrivers.length);
     } catch (error) {
       console.error('載入線上司機數量錯誤:', error);
     }
@@ -42,8 +43,7 @@ export const useCallCar = () => {
         {
           event: '*',
           schema: 'public',
-          table: 'driver_profiles',
-          filter: 'status=in.(online,offline)'
+          table: 'driver_profiles'
         },
         (payload) => {
           console.log('司機狀態變化:', payload);
