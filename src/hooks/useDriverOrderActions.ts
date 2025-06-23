@@ -1,4 +1,3 @@
-
 import { useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useLiff } from "@/contexts/LiffContext";
@@ -194,16 +193,10 @@ export const useDriverOrderActions = (onOrdersChanged: () => void) => {
 
   const handleNavigate = useCallback(async (orderId: string) => {
     try {
-      // 從資料庫獲取訂單詳細資訊
+      // 先獲取訂單的基本資訊
       const { data: orderData, error } = await supabase
         .from('call_records')
-        .select(`
-          favorite_type, 
-          favorite_info,
-          merchant:merchant_profiles!inner(
-            business_address
-          )
-        `)
+        .select('favorite_type, favorite_info, line_user_id')
         .eq('id', orderId)
         .single();
 
@@ -220,9 +213,15 @@ export const useDriverOrderActions = (onOrdersChanged: () => void) => {
       let navigationUrl = '';
       
       if (orderData.favorite_type === 'current') {
-        // 如果是現在位置，導航到商家地址
-        if (orderData.merchant?.business_address) {
-          navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(orderData.merchant.business_address)}`;
+        // 如果是現在位置，需要獲取商家地址
+        const { data: merchantData } = await supabase
+          .from('merchant_profiles')
+          .select('business_address')
+          .eq('line_user_id', orderData.line_user_id)
+          .single();
+
+        if (merchantData?.business_address) {
+          navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(merchantData.business_address)}`;
         } else {
           toast({
             title: "無法導航",
