@@ -75,6 +75,8 @@ export const createCallRecord = async (
   favoriteType: string,
   favoriteInfo: string
 ) => {
+  console.log('📝 開始建立叫車記錄:', { lineUserId: lineUserId.substring(0, 10) + '...', carType, carTypeLabel });
+  
   const { data: newRecord, error } = await supabase
     .from('call_records')
     .insert({
@@ -89,21 +91,25 @@ export const createCallRecord = async (
     .single();
 
   if (error) {
+    console.error('❌ 建立叫車記錄失敗:', error);
     throw error;
   }
 
+  console.log('✅ 叫車記錄建立成功:', newRecord.id);
+
   // 只發送叫車確認通知給商家（確認叫車請求已送出）
   try {
-    await sendLineNotification(lineUserId, `🚕 叫車請求已送出！\n\n車型：${carTypeLabel}\n狀態：等待司機接單\n\n請耐心等候，我們會在司機接單時立即通知您。`);
-    console.log('✅ 已發送叫車確認通知給商家');
+    const confirmationMessage = `🚕 叫車請求已送出！\n\n車型：${carTypeLabel}\n狀態：等待司機接單\n\n請耐心等候，我們會在司機接單時立即通知您。`;
+    await sendLineNotification(lineUserId, confirmationMessage);
+    console.log('✅ 已發送叫車確認通知給商家:', lineUserId.substring(0, 10) + '...');
   } catch (notificationError) {
     console.error('❌ 發送叫車確認通知錯誤:', notificationError);
     // 不影響主要功能，繼續執行
   }
 
-  // 注意：新訂單通知司機的功能由 useDriverOrdersRealtime hook 負責
+  // 重要：新訂單通知司機的功能由 useDriverOrdersRealtime hook 負責
   // 當訂單插入到資料庫時，會觸發實時監聽器自動通知所有線上司機
-  console.log('📝 訂單已建立，等待實時監聽器通知司機');
+  console.log('📝 訂單已建立，等待實時監聽器通知司機。訂單ID:', newRecord.id);
 
   return {
     id: newRecord.id,

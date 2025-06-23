@@ -26,7 +26,7 @@ export const useDriverStatus = () => {
       console.log('🔍 檢查司機狀態:', profile.userId);
       const { data, error } = await supabase
         .from('driver_profiles')
-        .select('status')
+        .select('status, line_user_id, name')
         .eq('line_user_id', profile.userId)
         .maybeSingle();
 
@@ -35,11 +35,21 @@ export const useDriverStatus = () => {
         return;
       }
 
-      if (data && data.status === 'online') {
-        setIsOnline(true);
-        console.log('✅ 司機目前狀態: 線上');
+      if (data) {
+        console.log('📊 司機資料:', {
+          name: data.name,
+          status: data.status,
+          lineUserId: data.line_user_id?.substring(0, 10) + '...'
+        });
+        
+        if (data.status === 'online') {
+          setIsOnline(true);
+          console.log('✅ 司機目前狀態: 線上');
+        } else {
+          console.log('📴 司機目前狀態: 離線');
+        }
       } else {
-        console.log('📴 司機目前狀態: 離線');
+        console.log('⚠️ 找不到司機資料');
       }
     } catch (error) {
       console.error('❌ 檢查司機狀態異常:', error);
@@ -256,6 +266,8 @@ export const useDriverStatus = () => {
           console.error('❌ 創建司機資料錯誤:', insertError);
           throw insertError;
         }
+        
+        console.log('✅ 司機資料創建成功');
       } else {
         console.log('📝 更新現有司機狀態');
         const { error: updateError } = await supabase
@@ -270,6 +282,8 @@ export const useDriverStatus = () => {
           console.error('❌ 更新司機狀態錯誤:', updateError);
           throw updateError;
         }
+        
+        console.log('✅ 司機狀態更新成功');
       }
 
       // 如果司機上線，檢查並通知待接訂單

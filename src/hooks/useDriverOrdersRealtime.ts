@@ -25,6 +25,12 @@ export const useDriverOrdersRealtime = ({ onOrderUpdate }: UseDriverOrdersRealti
     try {
       console.log('📤 發送 LINE 通知給司機:', { userId: userId.substring(0, 10) + '...', messageLength: message.length });
       
+      // 驗證 LINE User ID 格式
+      if (!userId || userId.length !== 33 || !userId.startsWith('U')) {
+        console.error('❌ 無效的 LINE User ID 格式:', userId);
+        return false;
+      }
+      
       const { data, error } = await supabase.functions.invoke('send-line-notification', {
         body: {
           userId: userId,
@@ -52,10 +58,10 @@ export const useDriverOrdersRealtime = ({ onOrderUpdate }: UseDriverOrdersRealti
       // 獲取所有線上司機 - 更嚴格的篩選條件
       const { data: onlineDrivers, error } = await supabase
         .from('driver_profiles')
-        .select('line_user_id, name, driver_id')
+        .select('line_user_id, name, driver_id, status, updated_at')
         .eq('status', 'online')
         .not('line_user_id', 'is', null)
-        .gte('updated_at', new Date(Date.now() - 3 * 60 * 1000).toISOString()); // 3分鐘內活躍
+        .gte('updated_at', new Date(Date.now() - 10 * 60 * 1000).toISOString()); // 10分鐘內活躍
 
       if (error) {
         console.error('❌ 獲取線上司機失敗:', error);
@@ -67,7 +73,12 @@ export const useDriverOrdersRealtime = ({ onOrderUpdate }: UseDriverOrdersRealti
         return;
       }
 
-      console.log(`📋 找到 ${onlineDrivers.length} 位線上司機:`, onlineDrivers.map(d => d.name));
+      console.log(`📋 找到 ${onlineDrivers.length} 位線上司機:`, onlineDrivers.map(d => ({
+        name: d.name,
+        lineUserId: d.line_user_id?.substring(0, 10) + '...',
+        status: d.status,
+        updatedAt: d.updated_at
+      })));
 
       const location = orderData.favorite_type === 'code' ? 
         `代碼: ${orderData.favorite_info}` : 
@@ -80,7 +91,12 @@ export const useDriverOrdersRealtime = ({ onOrderUpdate }: UseDriverOrdersRealti
       let successCount = 0;
       for (const driver of onlineDrivers) {
         try {
-          console.log(`📤 發送通知給司機 ${driver.name} (${driver.line_user_id})`);
+          console.log(`📤 發送通知給司機 ${driver.name}:`, {
+            lineUserId: driver.line_user_id?.substring(0, 10) + '...',
+            status: driver.status,
+            updatedAt: driver.updated_at
+          });
+          
           const success = await sendLineNotification(driver.line_user_id, lineMessage);
           if (success) {
             successCount++;
@@ -88,6 +104,9 @@ export const useDriverOrdersRealtime = ({ onOrderUpdate }: UseDriverOrdersRealti
           } else {
             console.log(`❌ 通知司機 ${driver.name} 失敗`);
           }
+          
+          // 增加延遲避免 rate limit
+          await new Promise(resolve => setTimeout(resolve, 100));
         } catch (error) {
           console.error(`❌ 通知司機 ${driver.name} 異常:`, error);
         }
