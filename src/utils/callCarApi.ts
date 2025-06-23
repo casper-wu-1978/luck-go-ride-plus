@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { CallRecord, FavoriteCode, FavoriteAddress } from "@/types/callCar";
 
@@ -70,6 +71,8 @@ export const loadCallRecords = async (lineUserId: string): Promise<CallRecord[]>
 // 獲取所有線上司機的函數
 const getOnlineDrivers = async () => {
   try {
+    console.log('🔍 開始獲取線上司機列表...');
+    
     const { data: onlineDrivers, error } = await supabase
       .from('driver_profiles')
       .select('line_user_id, name, driver_id, status, updated_at')
@@ -82,7 +85,22 @@ const getOnlineDrivers = async () => {
       return [];
     }
 
-    return onlineDrivers || [];
+    // 過濾掉測試用戶ID和無效ID
+    const validDrivers = (onlineDrivers || []).filter(driver => {
+      const isValidId = driver.line_user_id && 
+                       driver.line_user_id.startsWith('U') && 
+                       driver.line_user_id.length >= 30 &&
+                       !driver.line_user_id.includes('12345'); // 排除測試ID
+      
+      if (!isValidId) {
+        console.log('⚠️ 跳過無效或測試用戶ID:', driver.line_user_id?.substring(0, 10) + '...');
+      }
+      
+      return isValidId;
+    });
+
+    console.log(`✅ 找到 ${validDrivers.length} 位有效線上司機`);
+    return validDrivers;
   } catch (error) {
     console.error('❌ 獲取線上司機異常:', error);
     return [];
@@ -92,21 +110,27 @@ const getOnlineDrivers = async () => {
 // 通知所有線上司機新訂單
 const notifyAllOnlineDrivers = async (orderData: any) => {
   try {
-    console.log('🔔 開始通知所有線上司機新訂單:', orderData);
+    console.log('🔔 開始通知所有線上司機新訂單:', {
+      orderId: orderData.id,
+      carType: orderData.car_type_label,
+      favoriteType: orderData.favorite_type
+    });
     
     const onlineDrivers = await getOnlineDrivers();
 
     if (!onlineDrivers || onlineDrivers.length === 0) {
-      console.log('📭 目前沒有線上司機');
+      console.log('📭 目前沒有線上司機或所有司機ID無效');
       return;
     }
 
-    console.log(`📋 找到 ${onlineDrivers.length} 位線上司機:`, onlineDrivers.map(d => ({
-      name: d.name,
-      lineUserId: d.line_user_id?.substring(0, 10) + '...',
-      status: d.status,
-      updatedAt: d.updated_at
-    })));
+    console.log(`📋 準備通知 ${onlineDrivers.length} 位線上司機:`, 
+      onlineDrivers.map(d => ({
+        name: d.name,
+        lineUserId: d.line_user_id?.substring(0, 10) + '...',
+        status: d.status,
+        updatedAt: d.updated_at
+      }))
+    );
 
     const location = orderData.favorite_type === 'code' ? 
       `代碼: ${orderData.favorite_info}` : 
@@ -117,33 +141,42 @@ const notifyAllOnlineDrivers = async (orderData: any) => {
 
     // 發送通知給所有線上司機
     let successCount = 0;
+    let errorCount = 0;
+    
     for (const driver of onlineDrivers) {
       try {
         console.log(`📤 發送通知給司機 ${driver.name}:`, {
           lineUserId: driver.line_user_id?.substring(0, 10) + '...',
-          status: driver.status,
-          updatedAt: driver.updated_at
+          status: driver.status
         });
         
-        const success = await sendLineNotification(driver.line_user_id, lineMessage);
-        if (success) {
-          successCount++;
-          console.log(`✅ 成功通知司機 ${driver.name}`);
+        const { data, error } = await supabase.functions.invoke('send-line-notification', {
+          body: {
+            userId: driver.line_user_id,
+            message: lineMessage
+          }
+        });
+
+        if (error) {
+          console.error(`❌ 通知司機 ${driver.name} 失敗:`, error);
+          errorCount++;
         } else {
-          console.log(`❌ 通知司機 ${driver.name} 失敗`);
+          console.log(`✅ 成功通知司機 ${driver.name}`);
+          successCount++;
         }
         
         // 增加延遲避免 rate limit
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 200));
       } catch (error) {
         console.error(`❌ 通知司機 ${driver.name} 異常:`, error);
+        errorCount++;
       }
     }
 
-    console.log(`🎯 新訂單通知完成：成功 ${successCount}/${onlineDrivers.length} 位司機`);
+    console.log(`🎯 新訂單群發通知完成：成功 ${successCount}/${onlineDrivers.length} 位司機 (失敗: ${errorCount})`);
     
   } catch (error) {
-    console.error('❌ 通知線上司機異常:', error);
+    console.error('❌ 群發通知線上司機異常:', error);
   }
 };
 
@@ -154,7 +187,13 @@ export const createCallRecord = async (
   favoriteType: string,
   favoriteInfo: string
 ) => {
-  console.log('📝 開始建立叫車記錄:', { lineUserId: lineUserId.substring(0, 10) + '...', carType, carTypeLabel });
+  console.log('📝 開始建立叫車記錄:', { 
+    lineUserId: lineUserId.substring(0, 10) + '...', 
+    carType, 
+    carTypeLabel,
+    favoriteType,
+    favoriteInfo
+  });
   
   const { data: newRecord, error } = await supabase
     .from('call_records')
@@ -176,21 +215,31 @@ export const createCallRecord = async (
 
   console.log('✅ 叫車記錄建立成功:', newRecord.id);
 
-  // 1. 發送叫車確認通知給商家
+  // 1. 發送叫車確認通知給商家（只有這個會發給商家）
   try {
-    const confirmationMessage = `🚕 叫車請求已送出！\n\n車型：${carTypeLabel}\n狀態：等待司機接單\n\n請耐心等候，我們會在司機接單時立即通知您。`;
-    await sendLineNotification(lineUserId, confirmationMessage);
-    console.log('✅ 已發送叫車確認通知給商家:', lineUserId.substring(0, 10) + '...');
+    const location = favoriteType === 'code' ? `代碼: ${favoriteInfo}` : 
+                    favoriteType === 'address' ? `地址: ${favoriteInfo}` : '現在位置';
+    
+    const confirmationMessage = `🚕 叫車請求已送出！\n\n車型：${carTypeLabel}\n上車位置：${location}\n狀態：等待司機接單\n\n請耐心等候，我們會在司機接單時立即通知您。`;
+    
+    // 檢查商家ID是否有效
+    if (lineUserId && lineUserId.startsWith('U') && lineUserId.length >= 30 && !lineUserId.includes('12345')) {
+      await sendLineNotification(lineUserId, confirmationMessage);
+      console.log('✅ 已發送叫車確認通知給商家:', lineUserId.substring(0, 10) + '...');
+    } else {
+      console.log('⚠️ 跳過發送給無效商家ID:', lineUserId);
+    }
   } catch (notificationError) {
     console.error('❌ 發送叫車確認通知錯誤:', notificationError);
   }
 
-  // 2. 直接通知所有線上司機新訂單（重要：這是關鍵修改）
+  // 2. 群發通知所有線上司機新訂單（這是關鍵功能）
   try {
+    console.log('🚨 開始群發新訂單通知給所有線上司機...');
     await notifyAllOnlineDrivers(newRecord);
-    console.log('✅ 已通知所有線上司機新訂單');
+    console.log('✅ 已群發新訂單通知給所有線上司機');
   } catch (notificationError) {
-    console.error('❌ 通知線上司機錯誤:', notificationError);
+    console.error('❌ 群發通知線上司機錯誤:', notificationError);
   }
 
   return {
