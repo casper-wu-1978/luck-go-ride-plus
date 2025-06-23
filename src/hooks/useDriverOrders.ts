@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -178,7 +177,11 @@ export const useDriverOrders = () => {
     }
   }, [profile?.userId, toast, loadOrders]);
 
-  const handleCompleteOrder = useCallback(async (orderId: string) => {
+  const handleCompleteOrder = useCallback(async (orderId: string, completionData?: {
+    destinationAddress: string;
+    distanceKm: number;
+    fareAmount: number;
+  }) => {
     try {
       // 先獲取當前訂單狀態
       const { data: currentOrder, error: fetchError } = await supabase
@@ -199,14 +202,28 @@ export const useDriverOrders = () => {
 
       let newStatus = '';
       let successMessage = '';
+      let updateData: any = {
+        status: '',
+        ...(profile?.userId && { driver_id: profile.userId })
+      };
 
       // 根據當前狀態決定下一個狀態
       if (currentOrder.status === 'arrived') {
         newStatus = 'in_progress';
         successMessage = '行程已開始';
+        updateData.status = newStatus;
       } else if (currentOrder.status === 'in_progress') {
         newStatus = 'completed';
         successMessage = '訂單已完成';
+        updateData.status = newStatus;
+        updateData.completed_at = new Date().toISOString();
+        
+        // 加入完成訂單的額外資料
+        if (completionData) {
+          updateData.destination_address = completionData.destinationAddress;
+          updateData.distance_km = completionData.distanceKm;
+          updateData.fare_amount = completionData.fareAmount;
+        }
       } else {
         toast({
           title: "操作失敗",
@@ -217,13 +234,11 @@ export const useDriverOrders = () => {
       }
 
       console.log('更新訂單狀態:', orderId, '從', currentOrder.status, '到', newStatus);
+      console.log('更新資料:', updateData);
       
       const { error } = await supabase
         .from('call_records')
-        .update({
-          status: newStatus,
-          ...(newStatus === 'completed' && { completed_at: new Date().toISOString() })
-        })
+        .update(updateData)
         .eq('id', orderId)
         .eq('driver_id', profile?.userId);
 

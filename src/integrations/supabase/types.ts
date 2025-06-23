@@ -49,12 +49,15 @@ export type Database = {
           car_type_label: string
           completed_at: string | null
           created_at: string
+          destination_address: string | null
+          distance_km: number | null
           driver_car_brand: string | null
           driver_car_color: string | null
           driver_id: string | null
           driver_name: string | null
           driver_phone: string | null
           driver_plate_number: string | null
+          fare_amount: number | null
           favorite_info: string | null
           favorite_type: string
           id: string
@@ -68,12 +71,15 @@ export type Database = {
           car_type_label: string
           completed_at?: string | null
           created_at?: string
+          destination_address?: string | null
+          distance_km?: number | null
           driver_car_brand?: string | null
           driver_car_color?: string | null
           driver_id?: string | null
           driver_name?: string | null
           driver_phone?: string | null
           driver_plate_number?: string | null
+          fare_amount?: number | null
           favorite_info?: string | null
           favorite_type: string
           id?: string
@@ -87,12 +93,15 @@ export type Database = {
           car_type_label?: string
           completed_at?: string | null
           created_at?: string
+          destination_address?: string | null
+          distance_km?: number | null
           driver_car_brand?: string | null
           driver_car_color?: string | null
           driver_id?: string | null
           driver_name?: string | null
           driver_phone?: string | null
           driver_plate_number?: string | null
+          fare_amount?: number | null
           favorite_info?: string | null
           favorite_type?: string
           id?: string

@@ -7,6 +7,9 @@ export interface CallRecord {
   timestamp: Date;
   favoriteType: string;
   favoriteInfo?: string;
+  destinationAddress?: string;
+  distanceKm?: number;
+  fareAmount?: number;
   driverInfo?: {
     name: string;
     phone: string;

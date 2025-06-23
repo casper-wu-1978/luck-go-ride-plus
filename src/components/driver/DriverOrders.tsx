@@ -16,7 +16,7 @@ const DriverOrders = () => {
     handleNavigate,
     handleCancelOrder,
     handleCompleteOrder,
-    handleArriveOrder // New function for arrive action
+    handleArriveOrder
   } = useDriverOrders();
   const { 
     isOnline, 
@@ -28,6 +28,14 @@ const DriverOrders = () => {
 
   const handleAcceptOrder = (orderId: string) => {
     acceptOrder(orderId, isOnline);
+  };
+
+  const handleCompleteWithData = (orderId: string, completionData?: {
+    destinationAddress: string;
+    distanceKm: number;
+    fareAmount: number;
+  }) => {
+    handleCompleteOrder(orderId, completionData);
   };
 
   if (isLoading) {
@@ -66,7 +74,7 @@ const DriverOrders = () => {
                 order={order}
                 onNavigate={handleNavigate}
                 onCancel={handleCancelOrder}
-                onComplete={handleCompleteOrder}
+                onComplete={handleCompleteWithData}
                 onArrive={handleArriveOrder}
               />
             ))}
