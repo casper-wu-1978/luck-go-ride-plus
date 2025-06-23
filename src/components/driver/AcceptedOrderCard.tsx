@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Navigation, Phone, MapPin, Clock, XCircle, CheckCircle, Car } from "lucide-react";
+import { Navigation, Phone, MapPin, Clock, XCircle, CheckCircle, Car, Building2, User } from "lucide-react";
 import OrderCompletionForm from "./OrderCompletionForm";
 
 interface AcceptedOrder {
@@ -13,6 +13,12 @@ interface AcceptedOrder {
   favoriteType: string;
   favoriteInfo?: string;
   status: string;
+  merchantInfo?: {
+    businessName: string;
+    contactName: string;
+    phone: string;
+    businessAddress: string;
+  };
 }
 
 interface AcceptedOrderCardProps {
@@ -46,6 +52,17 @@ const AcceptedOrderCard = ({ order, onNavigate, onCancel, onComplete, onArrive }
       case 'in_progress': return 'bg-purple-600';
       default: return 'bg-blue-600';
     }
+  };
+
+  const getLocationDisplay = () => {
+    if (order.favoriteType === 'code') {
+      return `代碼: ${order.favoriteInfo}`;
+    } else if (order.favoriteType === 'address') {
+      return `地址: ${order.favoriteInfo}`;
+    } else if (order.favoriteType === 'current' && order.merchantInfo) {
+      return `商家地址: ${order.merchantInfo.businessAddress}`;
+    }
+    return '現在位置';
   };
 
   const handleCompleteClick = () => {
@@ -87,10 +104,27 @@ const AcceptedOrderCard = ({ order, onNavigate, onCancel, onComplete, onArrive }
               {order.timestamp.toLocaleString('zh-TW')}
             </div>
             
+            {/* 商家資訊 */}
+            {order.merchantInfo && (
+              <div className="bg-white p-3 rounded-lg space-y-2 border border-blue-200">
+                <div className="flex items-center text-sm font-medium text-blue-800">
+                  <Building2 className="h-4 w-4 mr-2" />
+                  {order.merchantInfo.businessName}
+                </div>
+                <div className="flex items-center text-sm text-blue-700">
+                  <User className="h-4 w-4 mr-2" />
+                  聯絡人：{order.merchantInfo.contactName}
+                </div>
+                <div className="flex items-center text-sm text-blue-700">
+                  <Phone className="h-4 w-4 mr-2" />
+                  {order.merchantInfo.phone}
+                </div>
+              </div>
+            )}
+            
             <div className="flex items-center text-sm text-gray-600">
               <MapPin className="h-4 w-4 mr-2" />
-              {order.favoriteType === 'code' ? `代碼: ${order.favoriteInfo}` : 
-               order.favoriteType === 'address' ? `地址: ${order.favoriteInfo}` : '現在位置'}
+              {getLocationDisplay()}
             </div>
 
             <div className="grid grid-cols-2 gap-2 pt-3">
@@ -130,6 +164,18 @@ const AcceptedOrderCard = ({ order, onNavigate, onCancel, onComplete, onArrive }
                 >
                   <CheckCircle className="h-4 w-4 mr-2" />
                   完成訂單
+                </Button>
+              )}
+              
+              {/* 聯絡商家按鈕 */}
+              {order.merchantInfo?.phone && (
+                <Button 
+                  variant="outline" 
+                  onClick={() => window.open(`tel:${order.merchantInfo?.phone}`, '_self')}
+                  className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                >
+                  <Phone className="h-4 w-4 mr-2" />
+                  聯絡商家
                 </Button>
               )}
               

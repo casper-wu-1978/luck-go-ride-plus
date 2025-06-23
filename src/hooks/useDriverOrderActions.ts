@@ -1,3 +1,4 @@
+
 import { useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useLiff } from "@/contexts/LiffContext";
@@ -196,7 +197,13 @@ export const useDriverOrderActions = (onOrdersChanged: () => void) => {
       // 從資料庫獲取訂單詳細資訊
       const { data: orderData, error } = await supabase
         .from('call_records')
-        .select('favorite_type, favorite_info')
+        .select(`
+          favorite_type, 
+          favorite_info,
+          merchant:merchant_profiles!inner(
+            business_address
+          )
+        `)
         .eq('id', orderId)
         .single();
 
@@ -213,13 +220,17 @@ export const useDriverOrderActions = (onOrdersChanged: () => void) => {
       let navigationUrl = '';
       
       if (orderData.favorite_type === 'current') {
-        // 如果是現在位置，提示司機聯繫乘客
-        toast({
-          title: "無法導航",
-          description: "乘客選擇「現在位置」，請直接聯繫乘客確認位置",
-          variant: "destructive"
-        });
-        return;
+        // 如果是現在位置，導航到商家地址
+        if (orderData.merchant?.business_address) {
+          navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(orderData.merchant.business_address)}`;
+        } else {
+          toast({
+            title: "無法導航",
+            description: "無法獲取商家地址資訊",
+            variant: "destructive"
+          });
+          return;
+        }
       } else if (orderData.favorite_type === 'code') {
         // 如果是代碼，搜索該代碼
         navigationUrl = `https://www.google.com/maps/search/${encodeURIComponent(orderData.favorite_info || '')}`;
@@ -234,7 +245,7 @@ export const useDriverOrderActions = (onOrdersChanged: () => void) => {
         
         toast({
           title: "已開啟導航",
-          description: "Google地圖已開啟，請依照指示前往乘客位置",
+          description: "Google地圖已開啟，請依照指示前往目標位置",
         });
         
         console.log('已開啟Google地圖導航:', navigationUrl);

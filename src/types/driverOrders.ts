@@ -7,6 +7,12 @@ export interface CallRecord {
   timestamp: Date;
   favoriteType: string;
   favoriteInfo?: string;
+  merchantInfo?: {
+    businessName: string;
+    contactName: string;
+    phone: string;
+    businessAddress: string;
+  };
 }
 
 export interface OrderCompletionData {

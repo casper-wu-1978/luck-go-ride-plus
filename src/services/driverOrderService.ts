@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import type { CallRecord, OrderCompletionData } from "@/types/driverOrders";
 
@@ -6,7 +5,15 @@ export const driverOrderService = {
   async loadWaitingOrders(): Promise<CallRecord[]> {
     const { data, error } = await supabase
       .from('call_records')
-      .select('*')
+      .select(`
+        *,
+        merchant:merchant_profiles!inner(
+          business_name,
+          contact_name,
+          phone,
+          business_address
+        )
+      `)
       .eq('status', 'waiting')
       .order('created_at', { ascending: false });
 
@@ -22,14 +29,28 @@ export const driverOrderService = {
       status: order.status,
       timestamp: new Date(order.created_at),
       favoriteType: order.favorite_type,
-      favoriteInfo: order.favorite_info || undefined
+      favoriteInfo: order.favorite_info || undefined,
+      merchantInfo: order.merchant ? {
+        businessName: order.merchant.business_name,
+        contactName: order.merchant.contact_name,
+        phone: order.merchant.phone,
+        businessAddress: order.merchant.business_address
+      } : undefined
     }));
   },
 
   async loadAcceptedOrders(driverId: string): Promise<CallRecord[]> {
     const { data, error } = await supabase
       .from('call_records')
-      .select('*')
+      .select(`
+        *,
+        merchant:merchant_profiles!inner(
+          business_name,
+          contact_name,
+          phone,
+          business_address
+        )
+      `)
       .eq('driver_id', driverId)
       .in('status', ['matched', 'arrived', 'in_progress'])
       .order('created_at', { ascending: false });
@@ -46,7 +67,13 @@ export const driverOrderService = {
       status: order.status,
       timestamp: new Date(order.created_at),
       favoriteType: order.favorite_type,
-      favoriteInfo: order.favorite_info || undefined
+      favoriteInfo: order.favorite_info || undefined,
+      merchantInfo: order.merchant ? {
+        businessName: order.merchant.business_name,
+        contactName: order.merchant.contact_name,
+        phone: order.merchant.phone,
+        businessAddress: order.merchant.business_address
+      } : undefined
     }));
   },
 
