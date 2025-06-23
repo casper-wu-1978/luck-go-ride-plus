@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { CallRecord, FavoriteCode, FavoriteAddress } from "@/types/callCar";
 
@@ -68,6 +67,86 @@ export const loadCallRecords = async (lineUserId: string): Promise<CallRecord[]>
   }
 };
 
+// 獲取所有線上司機的函數
+const getOnlineDrivers = async () => {
+  try {
+    const { data: onlineDrivers, error } = await supabase
+      .from('driver_profiles')
+      .select('line_user_id, name, driver_id, status, updated_at')
+      .eq('status', 'online')
+      .not('line_user_id', 'is', null)
+      .gte('updated_at', new Date(Date.now() - 10 * 60 * 1000).toISOString()); // 10分鐘內活躍
+
+    if (error) {
+      console.error('❌ 獲取線上司機失敗:', error);
+      return [];
+    }
+
+    return onlineDrivers || [];
+  } catch (error) {
+    console.error('❌ 獲取線上司機異常:', error);
+    return [];
+  }
+};
+
+// 通知所有線上司機新訂單
+const notifyAllOnlineDrivers = async (orderData: any) => {
+  try {
+    console.log('🔔 開始通知所有線上司機新訂單:', orderData);
+    
+    const onlineDrivers = await getOnlineDrivers();
+
+    if (!onlineDrivers || onlineDrivers.length === 0) {
+      console.log('📭 目前沒有線上司機');
+      return;
+    }
+
+    console.log(`📋 找到 ${onlineDrivers.length} 位線上司機:`, onlineDrivers.map(d => ({
+      name: d.name,
+      lineUserId: d.line_user_id?.substring(0, 10) + '...',
+      status: d.status,
+      updatedAt: d.updated_at
+    })));
+
+    const location = orderData.favorite_type === 'code' ? 
+      `代碼: ${orderData.favorite_info}` : 
+      orderData.favorite_type === 'address' ? 
+      `地址: ${orderData.favorite_info}` : '現在位置';
+    
+    const lineMessage = `🚕 新訂單通知！\n\n車型：${orderData.car_type_label}\n上車位置：${location}\n\n請儘快查看並接單！`;
+
+    // 發送通知給所有線上司機
+    let successCount = 0;
+    for (const driver of onlineDrivers) {
+      try {
+        console.log(`📤 發送通知給司機 ${driver.name}:`, {
+          lineUserId: driver.line_user_id?.substring(0, 10) + '...',
+          status: driver.status,
+          updatedAt: driver.updated_at
+        });
+        
+        const success = await sendLineNotification(driver.line_user_id, lineMessage);
+        if (success) {
+          successCount++;
+          console.log(`✅ 成功通知司機 ${driver.name}`);
+        } else {
+          console.log(`❌ 通知司機 ${driver.name} 失敗`);
+        }
+        
+        // 增加延遲避免 rate limit
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        console.error(`❌ 通知司機 ${driver.name} 異常:`, error);
+      }
+    }
+
+    console.log(`🎯 新訂單通知完成：成功 ${successCount}/${onlineDrivers.length} 位司機`);
+    
+  } catch (error) {
+    console.error('❌ 通知線上司機異常:', error);
+  }
+};
+
 export const createCallRecord = async (
   lineUserId: string,
   carType: string,
@@ -97,19 +176,22 @@ export const createCallRecord = async (
 
   console.log('✅ 叫車記錄建立成功:', newRecord.id);
 
-  // 只發送叫車確認通知給商家（確認叫車請求已送出）
+  // 1. 發送叫車確認通知給商家
   try {
     const confirmationMessage = `🚕 叫車請求已送出！\n\n車型：${carTypeLabel}\n狀態：等待司機接單\n\n請耐心等候，我們會在司機接單時立即通知您。`;
     await sendLineNotification(lineUserId, confirmationMessage);
     console.log('✅ 已發送叫車確認通知給商家:', lineUserId.substring(0, 10) + '...');
   } catch (notificationError) {
     console.error('❌ 發送叫車確認通知錯誤:', notificationError);
-    // 不影響主要功能，繼續執行
   }
 
-  // 重要：新訂單通知司機的功能由 useDriverOrdersRealtime hook 負責
-  // 當訂單插入到資料庫時，會觸發實時監聽器自動通知所有線上司機
-  console.log('📝 訂單已建立，等待實時監聽器通知司機。訂單ID:', newRecord.id);
+  // 2. 直接通知所有線上司機新訂單（重要：這是關鍵修改）
+  try {
+    await notifyAllOnlineDrivers(newRecord);
+    console.log('✅ 已通知所有線上司機新訂單');
+  } catch (notificationError) {
+    console.error('❌ 通知線上司機錯誤:', notificationError);
+  }
 
   return {
     id: newRecord.id,
