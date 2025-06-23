@@ -92,16 +92,16 @@ export const createCallRecord = async (
     throw error;
   }
 
-  // 發送叫車成功通知給商家（確認叫車請求已送出）
+  // 只發送叫車確認通知給商家，不發送新訂單通知
   try {
     await sendLineNotification(lineUserId, `🚕 叫車請求已送出！\n\n車型：${carTypeLabel}\n狀態：等待司機接單\n\n請耐心等候，我們會在司機接單時立即通知您。`);
   } catch (notificationError) {
-    console.error('發送叫車通知錯誤:', notificationError);
+    console.error('發送叫車確認通知錯誤:', notificationError);
     // 不影響主要功能，繼續執行
   }
 
   // 新訂單會透過司機端的實時監聽器 (useDriverOrdersRealtime) 
-  // 自動通知所有線上司機，無需在此處額外發送通知
+  // 自動檢測並通知所有線上司機，這裡不需要額外發送通知
 
   return {
     id: newRecord.id,

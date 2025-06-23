@@ -77,11 +77,20 @@ export const useDriverOrdersRealtime = ({ onOrderUpdate }: UseDriverOrdersRealti
 
       // 並行發送通知給所有線上司機
       const notificationPromises = onlineDrivers.map(async (driver) => {
+        if (!driver.line_user_id) {
+          console.log('⚠️ 司機沒有 LINE ID:', driver.name);
+          return;
+        }
+        
         try {
-          await sendLineNotification(driver.line_user_id, lineMessage);
-          console.log(`✅ 已通知司機 ${driver.name} (${driver.line_user_id.substring(0, 10)}...)`);
+          const success = await sendLineNotification(driver.line_user_id, lineMessage);
+          if (success) {
+            console.log(`✅ 已通知司機 ${driver.name} (${driver.line_user_id.substring(0, 10)}...)`);
+          } else {
+            console.log(`❌ 通知司機 ${driver.name} 失敗`);
+          }
         } catch (error) {
-          console.error(`❌ 通知司機 ${driver.name} 失敗:`, error);
+          console.error(`❌ 通知司機 ${driver.name} 異常:`, error);
         }
       });
 
@@ -130,11 +139,11 @@ export const useDriverOrdersRealtime = ({ onOrderUpdate }: UseDriverOrdersRealti
             timestamp: new Date().toISOString()
           });
           
-          // 新的待接訂單通知 - 通知所有線上司機
+          // 新的待接訂單通知 - 只當有新訂單插入時觸發
           if (payload.eventType === 'INSERT' && 
               payload.new?.status === 'waiting') {
             
-            console.log('🚗🔔 發現新的待接訂單，通知所有線上司機:', payload.new);
+            console.log('🚗🔔 發現新的待接訂單，準備通知所有線上司機:', payload.new);
             
             const location = payload.new.favorite_type === 'code' ? 
               `代碼: ${payload.new.favorite_info}` : 
@@ -148,7 +157,7 @@ export const useDriverOrdersRealtime = ({ onOrderUpdate }: UseDriverOrdersRealti
               duration: 10000,
             });
             
-            // 通知所有線上司機（包括當前司機）
+            // 通知所有線上司機
             await notifyAllOnlineDrivers(payload.new);
             
             onOrderUpdate();
