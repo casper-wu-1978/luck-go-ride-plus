@@ -1,6 +1,7 @@
 
 import { useDriverOrders } from "@/hooks/useDriverOrders";
 import { useDriverStatus } from "@/hooks/useDriverStatus";
+import { useDriverOrdersRealtime } from "@/hooks/useDriverOrdersRealtime";
 import { Car } from "lucide-react";
 import DriverStatusCard from "./DriverStatusCard";
 import OrdersList from "./OrdersList";
@@ -18,6 +19,7 @@ const DriverOrders = () => {
     handleCompleteOrder,
     handleArriveOrder
   } = useDriverOrders();
+  
   const { 
     isOnline, 
     currentLocation, 
@@ -25,6 +27,11 @@ const DriverOrders = () => {
     getCurrentLocation, 
     handleOnlineToggle 
   } = useDriverStatus();
+
+  // 添加實時監聽
+  const { isConnected } = useDriverOrdersRealtime({
+    onOrderUpdate: loadOrders
+  });
 
   const handleAcceptOrder = (orderId: string) => {
     acceptOrder(orderId, isOnline);
@@ -51,6 +58,11 @@ const DriverOrders = () => {
 
   return (
     <div className="space-y-4">
+      {/* 實時連接狀態指示器 */}
+      <div className="text-xs text-gray-500 text-center">
+        實時連接狀態: {isConnected ? '✅ 已連接' : '❌ 未連接'}
+      </div>
+
       <DriverStatusCard
         isOnline={isOnline}
         currentLocation={currentLocation}
