@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -139,19 +140,57 @@ export const useDriverOrders = () => {
   }, [profile?.userId, toast, loadOrders]);
 
   const handleArriveOrder = useCallback(async (orderId: string) => {
+    if (!profile?.userId) {
+      toast({
+        title: "登入錯誤",
+        description: "無法獲取司機資訊",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
-      console.log('司機抵達訂單:', orderId);
+      console.log('司機抵達訂單:', orderId, '司機ID:', profile.userId);
       
-      const { error } = await supabase
+      // 先檢查訂單是否存在且屬於該司機
+      const { data: orderCheck, error: checkError } = await supabase
+        .from('call_records')
+        .select('id, status, driver_id')
+        .eq('id', orderId)
+        .eq('driver_id', profile.userId)
+        .eq('status', 'matched')
+        .single();
+
+      if (checkError) {
+        console.error('檢查訂單錯誤:', checkError);
+        toast({
+          title: "操作失敗",
+          description: "找不到對應的訂單或訂單狀態不正確",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!orderCheck) {
+        toast({
+          title: "操作失敗",
+          description: "訂單不存在或您沒有權限操作此訂單",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // 更新訂單狀態為已抵達
+      const { error: updateError } = await supabase
         .from('call_records')
         .update({
           status: 'arrived'
         })
         .eq('id', orderId)
-        .eq('driver_id', profile?.userId);
+        .eq('driver_id', profile.userId);
 
-      if (error) {
-        console.error('更新抵達狀態錯誤:', error);
+      if (updateError) {
+        console.error('更新抵達狀態錯誤:', updateError);
         toast({
           title: "操作失敗",
           description: "無法更新抵達狀態",
