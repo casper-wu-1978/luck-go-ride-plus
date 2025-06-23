@@ -27,8 +27,8 @@ export const useDriverOrdersRealtime = ({ onOrderUpdate }: UseDriverOrdersRealti
       return;
     }
 
-    // 檢查是否為測試用戶ID，如果是則跳過
-    if (profile.userId.includes('12345')) {
+    // 檢查是否為測試用戶ID
+    if (profile.userId.includes('12345') || profile.userId.includes('test')) {
       console.log('⚠️ 司機端 - 檢測到測試用戶ID，跳過實時監聽設置');
       return;
     }
@@ -64,7 +64,7 @@ export const useDriverOrdersRealtime = ({ onOrderUpdate }: UseDriverOrdersRealti
             timestamp: new Date().toISOString()
           });
           
-          // 新的待接訂單通知 - 只顯示應用內通知（LINE通知已在createCallRecord中處理）
+          // 新的待接訂單通知 - 只顯示應用內通知
           if (payload.eventType === 'INSERT' && 
               payload.new?.status === 'waiting') {
             
@@ -79,7 +79,7 @@ export const useDriverOrdersRealtime = ({ onOrderUpdate }: UseDriverOrdersRealti
               payload.new.favorite_type === 'address' ? 
               `地址: ${payload.new.favorite_info}` : '現在位置';
             
-            // 顯示應用內通知給當前司機
+            // 顯示應用內通知
             toast({
               title: "🚕 新的待接訂單！",
               description: `${payload.new.car_type_label} - ${location}`,
