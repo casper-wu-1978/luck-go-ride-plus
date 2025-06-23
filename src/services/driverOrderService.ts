@@ -3,157 +3,98 @@ import type { CallRecord, OrderCompletionData } from "@/types/driverOrders";
 
 export const driverOrderService = {
   async loadWaitingOrders(): Promise<CallRecord[]> {
-    const { data, error } = await supabase
+    // First get the basic call records
+    const { data: orders, error } = await supabase
       .from('call_records')
-      .select(`
-        *,
-        merchant_profiles!call_records_line_user_id_fkey(
-          business_name,
-          contact_name,
-          phone,
-          business_address
-        )
-      `)
+      .select('*')
       .eq('status', 'waiting')
       .order('created_at', { ascending: false });
 
     if (error) {
       console.error('載入待接訂單錯誤:', error);
-      // 如果無法關聯商家資料，嘗試不使用關聯查詢
-      const { data: basicData, error: basicError } = await supabase
-        .from('call_records')
-        .select('*')
-        .eq('status', 'waiting')
-        .order('created_at', { ascending: false });
-
-      if (basicError) {
-        console.error('基本查詢也失敗:', basicError);
-        return [];
-      }
-
-      // 手動獲取商家資料
-      const ordersWithMerchant = await Promise.all(
-        (basicData || []).map(async (order) => {
-          const { data: merchantData } = await supabase
-            .from('merchant_profiles')
-            .select('business_name, contact_name, phone, business_address')
-            .eq('line_user_id', order.line_user_id)
-            .single();
-
-          return {
-            id: order.id,
-            carType: order.car_type,
-            carTypeLabel: order.car_type_label,
-            status: order.status,
-            timestamp: new Date(order.created_at),
-            favoriteType: order.favorite_type,
-            favoriteInfo: order.favorite_info || undefined,
-            merchantInfo: merchantData ? {
-              businessName: merchantData.business_name,
-              contactName: merchantData.contact_name,
-              phone: merchantData.phone,
-              businessAddress: merchantData.business_address
-            } : undefined
-          };
-        })
-      );
-
-      return ordersWithMerchant;
+      return [];
     }
 
-    return (data || []).map(order => ({
-      id: order.id,
-      carType: order.car_type,
-      carTypeLabel: order.car_type_label,
-      status: order.status,
-      timestamp: new Date(order.created_at),
-      favoriteType: order.favorite_type,
-      favoriteInfo: order.favorite_info || undefined,
-      merchantInfo: order.merchant_profiles ? {
-        businessName: order.merchant_profiles.business_name,
-        contactName: order.merchant_profiles.contact_name,
-        phone: order.merchant_profiles.phone,
-        businessAddress: order.merchant_profiles.business_address
-      } : undefined
-    }));
+    if (!orders || orders.length === 0) {
+      return [];
+    }
+
+    // Then get merchant data for each order
+    const ordersWithMerchant = await Promise.all(
+      orders.map(async (order) => {
+        const { data: merchantData } = await supabase
+          .from('merchant_profiles')
+          .select('business_name, contact_name, phone, business_address')
+          .eq('line_user_id', order.line_user_id)
+          .single();
+
+        return {
+          id: order.id,
+          carType: order.car_type,
+          carTypeLabel: order.car_type_label,
+          status: order.status,
+          timestamp: new Date(order.created_at),
+          favoriteType: order.favorite_type,
+          favoriteInfo: order.favorite_info || undefined,
+          merchantInfo: merchantData ? {
+            businessName: merchantData.business_name,
+            contactName: merchantData.contact_name,
+            phone: merchantData.phone,
+            businessAddress: merchantData.business_address
+          } : undefined
+        };
+      })
+    );
+
+    return ordersWithMerchant;
   },
 
   async loadAcceptedOrders(driverId: string): Promise<CallRecord[]> {
-    const { data, error } = await supabase
+    // First get the basic call records
+    const { data: orders, error } = await supabase
       .from('call_records')
-      .select(`
-        *,
-        merchant_profiles!call_records_line_user_id_fkey(
-          business_name,
-          contact_name,
-          phone,
-          business_address
-        )
-      `)
+      .select('*')
       .eq('driver_id', driverId)
       .in('status', ['matched', 'arrived', 'in_progress'])
       .order('created_at', { ascending: false });
 
     if (error) {
       console.error('載入已接訂單錯誤:', error);
-      // 如果無法關聯商家資料，嘗試不使用關聯查詢
-      const { data: basicData, error: basicError } = await supabase
-        .from('call_records')
-        .select('*')
-        .eq('driver_id', driverId)
-        .in('status', ['matched', 'arrived', 'in_progress'])
-        .order('created_at', { ascending: false });
-
-      if (basicError) {
-        console.error('基本查詢也失敗:', basicError);
-        return [];
-      }
-
-      // 手動獲取商家資料
-      const ordersWithMerchant = await Promise.all(
-        (basicData || []).map(async (order) => {
-          const { data: merchantData } = await supabase
-            .from('merchant_profiles')
-            .select('business_name, contact_name, phone, business_address')
-            .eq('line_user_id', order.line_user_id)
-            .single();
-
-          return {
-            id: order.id,
-            carType: order.car_type,
-            carTypeLabel: order.car_type_label,
-            status: order.status,
-            timestamp: new Date(order.created_at),
-            favoriteType: order.favorite_type,
-            favoriteInfo: order.favorite_info || undefined,
-            merchantInfo: merchantData ? {
-              businessName: merchantData.business_name,
-              contactName: merchantData.contact_name,
-              phone: merchantData.phone,
-              businessAddress: merchantData.business_address
-            } : undefined
-          };
-        })
-      );
-
-      return ordersWithMerchant;
+      return [];
     }
 
-    return (data || []).map(order => ({
-      id: order.id,
-      carType: order.car_type,
-      carTypeLabel: order.car_type_label,
-      status: order.status,
-      timestamp: new Date(order.created_at),
-      favoriteType: order.favorite_type,
-      favoriteInfo: order.favorite_info || undefined,
-      merchantInfo: order.merchant_profiles ? {
-        businessName: order.merchant_profiles.business_name,
-        contactName: order.merchant_profiles.contact_name,
-        phone: order.merchant_profiles.phone,
-        businessAddress: order.merchant_profiles.business_address
-      } : undefined
-    }));
+    if (!orders || orders.length === 0) {
+      return [];
+    }
+
+    // Then get merchant data for each order
+    const ordersWithMerchant = await Promise.all(
+      orders.map(async (order) => {
+        const { data: merchantData } = await supabase
+          .from('merchant_profiles')
+          .select('business_name, contact_name, phone, business_address')
+          .eq('line_user_id', order.line_user_id)
+          .single();
+
+        return {
+          id: order.id,
+          carType: order.car_type,
+          carTypeLabel: order.car_type_label,
+          status: order.status,
+          timestamp: new Date(order.created_at),
+          favoriteType: order.favorite_type,
+          favoriteInfo: order.favorite_info || undefined,
+          merchantInfo: merchantData ? {
+            businessName: merchantData.business_name,
+            contactName: merchantData.contact_name,
+            phone: merchantData.phone,
+            businessAddress: merchantData.business_address
+          } : undefined
+        };
+      })
+    );
+
+    return ordersWithMerchant;
   },
 
   async acceptOrder(orderId: string, driverId: string) {
