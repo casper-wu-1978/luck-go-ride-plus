@@ -85,8 +85,15 @@ export const useCallRecords = (lineUserId?: string) => {
         console.log('🔥 商家端 - 更新前記錄:', oldRecord);
         console.log('🔥 商家端 - 更新後記錄:', updatedRecords[existingIndex]);
         
-        // 強制重新渲染
-        return [...updatedRecords];
+        // 顯示更新通知
+        if (updatedRecord.status === 'matched' && updatedRecord.driver_name) {
+          toast({
+            title: "司機已接單！",
+            description: `司機 ${updatedRecord.driver_name} 已接受您的叫車請求`,
+          });
+        }
+        
+        return updatedRecords;
       } else {
         // 新記錄
         console.log('🔥 商家端 - 創建新記錄');
