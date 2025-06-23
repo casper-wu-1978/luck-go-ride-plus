@@ -35,8 +35,8 @@ const CallCar = () => {
 
   const { userProfile } = useCallCarProfile();
 
-  // 設置實時監聽 - 確保商家端能接收司機接單通知
-  useCallRecordsRealtime({
+  // 設置實時監聽 - 使用穩定的 updateRecordFromRealtime 函數
+  const { isConnected } = useCallRecordsRealtime({
     lineUserId: profile?.userId,
     onRecordUpdate: updateRecordFromRealtime,
   });
@@ -49,10 +49,11 @@ const CallCar = () => {
     }
   }, [profile?.userId, loadUserData, loadOnlineDriversCount]);
 
-  // 添加調試日誌
+  // 調試日誌
   useEffect(() => {
     console.log('CallCar - 叫車記錄更新:', callRecords.length, callRecords);
-  }, [callRecords]);
+    console.log('CallCar - 實時連接狀態:', isConnected);
+  }, [callRecords, isConnected]);
 
   // 如果沒有 profile，顯示載入中
   if (!profile) {
@@ -68,6 +69,11 @@ const CallCar = () => {
 
   return (
     <div className="space-y-4">
+      {/* 實時連接狀態指示器 */}
+      <div className="text-xs text-gray-500 text-center">
+        實時連接狀態: {isConnected ? '✅ 已連接' : '❌ 未連接'}
+      </div>
+
       <OnlineDriversStatus
         onlineDriversCount={onlineDriversCount}
         onRefresh={loadOnlineDriversCount}

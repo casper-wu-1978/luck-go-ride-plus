@@ -1,5 +1,5 @@
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -10,83 +10,96 @@ interface UseCallRecordsRealtimeProps {
 
 export const useCallRecordsRealtime = ({ lineUserId, onRecordUpdate }: UseCallRecordsRealtimeProps) => {
   const { toast } = useToast();
-
-  // 使用 useCallback 來穩定 onRecordUpdate 函數
-  const stableOnRecordUpdate = useCallback(onRecordUpdate, []);
+  const channelRef = useRef<any>(null);
+  const isSubscribedRef = useRef(false);
 
   useEffect(() => {
     if (!lineUserId) {
-      console.log('商家端 - 沒有用戶ID，跳過實時監聽設置');
+      console.log('❌ 商家端 - 沒有用戶ID，跳過實時監聽設置');
       return;
     }
 
-    console.log('🔥 商家端 - 設置實時監聽器:', lineUserId);
+    // 清理現有連接
+    if (channelRef.current) {
+      console.log('📞 清理現有實時監聽器');
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+      isSubscribedRef.current = false;
+    }
+
+    console.log('🔥 商家端 - 設置新的實時監聽器:', lineUserId);
     
-    // 使用更具體的頻道名稱，避免衝突
-    const channelName = `merchant_call_records_${lineUserId}`;
+    // 創建唯一的頻道名稱
+    const channelName = `merchant_realtime_${lineUserId}_${Date.now()}`;
     
     const channel = supabase
       .channel(channelName)
       .on(
         'postgres_changes',
         {
-          event: '*', // 監聽所有事件
+          event: '*',
           schema: 'public',
           table: 'call_records',
           filter: `line_user_id=eq.${lineUserId}`
         },
         (payload) => {
-          console.log('🔥🔥🔥 商家收到資料庫變更事件:', {
+          console.log('🔥🔥🔥 商家收到資料庫變更:', {
             eventType: payload.eventType,
-            old: payload.old,
-            new: payload.new,
+            recordId: payload.new?.id || payload.old?.id,
+            status: payload.new?.status,
+            driver_name: payload.new?.driver_name,
             timestamp: new Date().toISOString()
           });
           
-          if (payload.eventType === 'UPDATE' && payload.new) {
-            console.log('🔥🔥🔥 商家收到訂單狀態更新:', {
-              id: payload.new.id,
-              status: payload.new.status,
-              driver_name: payload.new.driver_name,
-              old_status: payload.old?.status
-            });
+          if (payload.new) {
+            console.log('🔥 處理記錄更新');
+            onRecordUpdate(payload.new);
             
-            // 立即調用更新函數
-            stableOnRecordUpdate(payload.new);
-            
-            // 顯示狀態更新通知
-            if (payload.new?.status === 'matched' && payload.new.driver_name) {
+            // 顯示司機接單通知
+            if (payload.eventType === 'UPDATE' && 
+                payload.new.status === 'matched' && 
+                payload.new.driver_name &&
+                payload.old?.status !== 'matched') {
+              
               toast({
                 title: "叫車成功！",
                 description: `司機 ${payload.new.driver_name} 已接單`,
-              });
-            } else if (payload.new?.status === 'failed') {
-              toast({
-                title: "叫車失敗",
-                description: "未能找到合適的司機，請稍後再試",
-                variant: "destructive"
+                duration: 5000,
               });
             }
-          } else if (payload.eventType === 'INSERT' && payload.new) {
-            console.log('🔥🔥🔥 商家收到新訂單:', payload.new);
-            stableOnRecordUpdate(payload.new);
           }
         }
       )
       .subscribe((status) => {
-        console.log('🔥 商家實時監聽狀態:', status, '頻道:', channelName);
+        console.log('📡 商家實時監聽狀態變更:', status, '頻道:', channelName);
+        
         if (status === 'SUBSCRIBED') {
-          console.log('🔥 商家實時監聽已成功訂閱，頻道:', channelName);
+          console.log('✅ 商家實時監聽已成功訂閱');
+          isSubscribedRef.current = true;
         } else if (status === 'TIMED_OUT') {
-          console.error('🔥 商家實時監聽超時，頻道:', channelName);
+          console.error('⏰ 商家實時監聽超時，嘗試重新連接');
+          isSubscribedRef.current = false;
         } else if (status === 'CLOSED') {
-          console.log('🔥 商家實時監聽已關閉，頻道:', channelName);
+          console.log('❌ 商家實時監聽已關閉');
+          isSubscribedRef.current = false;
         }
       });
 
+    channelRef.current = channel;
+
+    // 清理函數
     return () => {
-      console.log('🔥 商家端 - 清理實時監聽器:', channelName);
-      supabase.removeChannel(channel);
+      console.log('🧹 商家端 - 清理實時監聽器:', channelName);
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+        isSubscribedRef.current = false;
+      }
     };
-  }, [lineUserId, stableOnRecordUpdate, toast]);
+  }, [lineUserId, onRecordUpdate, toast]);
+
+  // 返回連接狀態供調試使用
+  return {
+    isConnected: isSubscribedRef.current
+  };
 };

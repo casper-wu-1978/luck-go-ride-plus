@@ -10,15 +10,15 @@ export const useCallRecords = (lineUserId?: string) => {
   const [callRecords, setCallRecords] = useState<CallRecord[]>([]);
   const { toast } = useToast();
 
-  const loadRecords = async () => {
+  const loadRecords = useCallback(async () => {
     if (!lineUserId) return;
     console.log('載入叫車記錄:', lineUserId);
     const records = await loadCallRecords(lineUserId);
     setCallRecords(records);
     console.log('載入的叫車記錄數量:', records.length);
-  };
+  }, [lineUserId]);
 
-  const createRecord = async (
+  const createRecord = useCallback(async (
     carType: string,
     carTypeLabel: string,
     favoriteType: string,
@@ -39,9 +39,9 @@ export const useCallRecords = (lineUserId?: string) => {
     console.log('新叫車記錄已創建:', newCallRecord);
     setCallRecords(prev => [newCallRecord, ...prev.slice(0, MAX_CALL_RECORDS - 1)]);
     return newCallRecord;
-  };
+  }, [lineUserId]);
 
-  const cancelRecord = async (recordId: string) => {
+  const cancelRecord = useCallback(async (recordId: string) => {
     console.log('取消叫車記錄:', recordId);
     await updateCallRecord(recordId, 'cancelled');
     setCallRecords(prev => 
@@ -51,11 +51,11 @@ export const useCallRecords = (lineUserId?: string) => {
           : record
       )
     );
-  };
+  }, []);
 
-  // 使用 useCallback 來穩定函數
+  // 穩定的更新函數 - 使用 useCallback 並移除 toast 依賴
   const updateRecordFromRealtime = useCallback((updatedRecord: any) => {
-    console.log('🔥 商家端 - 處理實時更新的記錄:', {
+    console.log('🔥🔥🔥 商家端收到實時更新:', {
       id: updatedRecord.id,
       status: updatedRecord.status,
       driver_name: updatedRecord.driver_name,
@@ -63,14 +63,8 @@ export const useCallRecords = (lineUserId?: string) => {
     });
     
     setCallRecords(prev => {
-      console.log('🔥 商家端 - 當前記錄列表:', prev.map(r => ({ 
-        id: r.id, 
-        status: r.status,
-        driver: r.driverInfo?.name || 'none'
-      })));
-      
       const existingIndex = prev.findIndex(record => record.id === updatedRecord.id);
-      console.log('🔥 商家端 - 找到的記錄索引:', existingIndex);
+      console.log('🔥 找到記錄索引:', existingIndex);
       
       if (existingIndex >= 0) {
         // 更新現有記錄
@@ -89,21 +83,13 @@ export const useCallRecords = (lineUserId?: string) => {
           } : undefined
         };
         
-        console.log('🔥 商家端 - 更新前記錄:', oldRecord);
-        console.log('🔥 商家端 - 更新後記錄:', updatedRecords[existingIndex]);
-        
-        // 顯示更新通知
-        if (updatedRecord.status === 'matched' && updatedRecord.driver_name) {
-          toast({
-            title: "司機已接單！",
-            description: `司機 ${updatedRecord.driver_name} 已接受您的叫車請求`,
-          });
-        }
+        console.log('🔥 更新前記錄:', oldRecord);
+        console.log('🔥 更新後記錄:', updatedRecords[existingIndex]);
         
         return updatedRecords;
       } else {
         // 新記錄
-        console.log('🔥 商家端 - 創建新記錄');
+        console.log('🔥 創建新記錄');
         const newRecord: CallRecord = {
           id: updatedRecord.id,
           carType: updatedRecord.car_type,
@@ -123,7 +109,23 @@ export const useCallRecords = (lineUserId?: string) => {
         return [newRecord, ...prev.slice(0, MAX_CALL_RECORDS - 1)];
       }
     });
+
+    // 分離 toast 通知邏輯，避免在 useCallback 依賴中包含 toast
+    if (updatedRecord.status === 'matched' && updatedRecord.driver_name) {
+      setTimeout(() => {
+        toast({
+          title: "司機已接單！",
+          description: `司機 ${updatedRecord.driver_name} 已接受您的叫車請求`,
+        });
+      }, 100);
+    }
   }, [toast]);
+
+  useEffect(() => {
+    if (lineUserId) {
+      loadRecords();
+    }
+  }, [lineUserId, loadRecords]);
 
   return {
     callRecords,
