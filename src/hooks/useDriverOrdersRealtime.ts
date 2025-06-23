@@ -47,14 +47,15 @@ export const useDriverOrdersRealtime = ({ onOrderUpdate }: UseDriverOrdersRealti
 
   const notifyAllOnlineDrivers = async (orderData: any) => {
     try {
-      console.log('🔔 通知所有線上司機新訂單:', orderData);
+      console.log('🔔 開始通知所有線上司機新訂單:', orderData);
       
-      // 獲取所有線上司機
+      // 獲取所有線上司機 - 更嚴格的篩選條件
       const { data: onlineDrivers, error } = await supabase
         .from('driver_profiles')
-        .select('line_user_id, name')
+        .select('line_user_id, name, driver_id')
         .eq('status', 'online')
-        .gte('updated_at', new Date(Date.now() - 5 * 60 * 1000).toISOString()); // 5分鐘內活躍
+        .not('line_user_id', 'is', null)
+        .gte('updated_at', new Date(Date.now() - 3 * 60 * 1000).toISOString()); // 3分鐘內活躍
 
       if (error) {
         console.error('❌ 獲取線上司機失敗:', error);
@@ -66,7 +67,7 @@ export const useDriverOrdersRealtime = ({ onOrderUpdate }: UseDriverOrdersRealti
         return;
       }
 
-      console.log(`📋 找到 ${onlineDrivers.length} 位線上司機`);
+      console.log(`📋 找到 ${onlineDrivers.length} 位線上司機:`, onlineDrivers.map(d => d.name));
 
       const location = orderData.favorite_type === 'code' ? 
         `代碼: ${orderData.favorite_info}` : 
@@ -75,27 +76,24 @@ export const useDriverOrdersRealtime = ({ onOrderUpdate }: UseDriverOrdersRealti
       
       const lineMessage = `🚕 新訂單通知！\n\n車型：${orderData.car_type_label}\n上車位置：${location}\n\n請儘快查看並接單！`;
 
-      // 並行發送通知給所有線上司機
-      const notificationPromises = onlineDrivers.map(async (driver) => {
-        if (!driver.line_user_id) {
-          console.log('⚠️ 司機沒有 LINE ID:', driver.name);
-          return;
-        }
-        
+      // 發送通知給所有線上司機
+      let successCount = 0;
+      for (const driver of onlineDrivers) {
         try {
+          console.log(`📤 發送通知給司機 ${driver.name} (${driver.line_user_id})`);
           const success = await sendLineNotification(driver.line_user_id, lineMessage);
           if (success) {
-            console.log(`✅ 已通知司機 ${driver.name} (${driver.line_user_id.substring(0, 10)}...)`);
+            successCount++;
+            console.log(`✅ 成功通知司機 ${driver.name}`);
           } else {
             console.log(`❌ 通知司機 ${driver.name} 失敗`);
           }
         } catch (error) {
           console.error(`❌ 通知司機 ${driver.name} 異常:`, error);
         }
-      });
+      }
 
-      await Promise.allSettled(notificationPromises);
-      console.log(`🎯 新訂單通知已發送給 ${onlineDrivers.length} 位司機`);
+      console.log(`🎯 新訂單通知完成：成功 ${successCount}/${onlineDrivers.length} 位司機`);
       
     } catch (error) {
       console.error('❌ 通知線上司機異常:', error);
@@ -157,7 +155,7 @@ export const useDriverOrdersRealtime = ({ onOrderUpdate }: UseDriverOrdersRealti
               duration: 10000,
             });
             
-            // 通知所有線上司機
+            // 通知所有線上司機（這是關鍵功能）
             await notifyAllOnlineDrivers(payload.new);
             
             onOrderUpdate();
