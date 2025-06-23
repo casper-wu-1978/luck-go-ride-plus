@@ -8,6 +8,13 @@ interface UseCallRecordsRealtimeProps {
   onRecordUpdate: (updatedRecord: any) => void;
 }
 
+interface RealtimePayload {
+  eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+  new?: any;
+  old?: any;
+  errors?: any;
+}
+
 export const useCallRecordsRealtime = ({ lineUserId, onRecordUpdate }: UseCallRecordsRealtimeProps) => {
   const { toast } = useToast();
   const channelRef = useRef<any>(null);
@@ -42,7 +49,7 @@ export const useCallRecordsRealtime = ({ lineUserId, onRecordUpdate }: UseCallRe
           table: 'call_records',
           filter: `line_user_id=eq.${lineUserId}`
         },
-        (payload) => {
+        (payload: RealtimePayload) => {
           console.log('🔥🔥🔥 商家收到資料庫變更:', {
             eventType: payload.eventType,
             recordId: payload.new?.id || payload.old?.id,
