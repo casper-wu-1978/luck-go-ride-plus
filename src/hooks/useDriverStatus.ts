@@ -109,6 +109,8 @@ export const useDriverStatus = () => {
 
   const checkForPendingOrders = async (driverId: string) => {
     try {
+      console.log(`司機 ${driverId} 上線，檢查待接訂單...`);
+      
       // 檢查是否有待接訂單
       const { data: pendingOrders, error } = await supabase
         .from('call_records')
@@ -118,8 +120,15 @@ export const useDriverStatus = () => {
 
       if (error) {
         console.error('檢查待接訂單錯誤:', error);
+        toast({
+          title: "檢查訂單失敗",
+          description: "無法檢查待接訂單",
+          variant: "destructive",
+        });
         return;
       }
+
+      console.log(`找到 ${pendingOrders?.length || 0} 筆待接訂單`);
 
       if (pendingOrders && pendingOrders.length > 0) {
         console.log(`發現 ${pendingOrders.length} 筆待接訂單，發送通知給司機 ${driverId}`);
@@ -139,19 +148,50 @@ export const useDriverStatus = () => {
         
         message += '\n請查看司機頁面接單！';
 
-        await supabase.functions.invoke('send-line-notification', {
-          body: {
-            userId: driverId,
-            message: message
-          }
-        });
+        try {
+          const { data: notificationResult, error: notificationError } = await supabase.functions.invoke('send-line-notification', {
+            body: {
+              userId: driverId,
+              message: message
+            }
+          });
 
-        console.log('已發送待接訂單通知給司機');
+          if (notificationError) {
+            console.error('發送LINE通知錯誤:', notificationError);
+            toast({
+              title: "通知發送失敗",
+              description: "無法發送LINE通知",
+              variant: "destructive",
+            });
+          } else {
+            console.log('已發送待接訂單通知給司機:', notificationResult);
+            toast({
+              title: "通知已發送",
+              description: `已通知司機有 ${pendingOrders.length} 筆待接訂單`,
+            });
+          }
+        } catch (notificationError) {
+          console.error('發送通知失敗:', notificationError);
+          toast({
+            title: "通知發送失敗",
+            description: "LINE通知服務異常",
+            variant: "destructive",
+          });
+        }
       } else {
         console.log('目前沒有待接訂單');
+        toast({
+          title: "已上線",
+          description: "目前沒有待接訂單",
+        });
       }
     } catch (error) {
       console.error('檢查待接訂單失敗:', error);
+      toast({
+        title: "檢查訂單失敗",
+        description: "無法檢查待接訂單",
+        variant: "destructive",
+      });
     }
   };
 
