@@ -1,17 +1,19 @@
 
 import { useState } from "react";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { Store, Car, History, User } from "lucide-react";
+import { Store, Car, History, User, Coins } from "lucide-react";
 import CallCar from "@/components/CallCar";
 import OrderHistory from "@/components/OrderHistory";
 import Profile from "@/components/Profile";
+import Rewards from "@/components/Rewards";
 
 const Merchant = () => {
   const [activeTab, setActiveTab] = useState("call");
 
   const navItems = [
     { id: "call", label: "叫車", icon: Car, component: CallCar },
-    { id: "history", label: "訂單", icon: History, component: OrderHistory },
+    { id: "history", label: "紀錄", icon: History, component: OrderHistory },
+    { id: "rewards", label: "回饋", icon: Coins, component: Rewards },
     { id: "profile", label: "商家", icon: User, component: Profile },
   ];
 
