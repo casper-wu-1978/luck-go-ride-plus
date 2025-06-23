@@ -107,6 +107,54 @@ export const useDriverStatus = () => {
     }
   };
 
+  const checkForPendingOrders = async (driverId: string) => {
+    try {
+      // 檢查是否有待接訂單
+      const { data: pendingOrders, error } = await supabase
+        .from('call_records')
+        .select('id, car_type_label, favorite_type, favorite_info, created_at')
+        .eq('status', 'waiting')
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('檢查待接訂單錯誤:', error);
+        return;
+      }
+
+      if (pendingOrders && pendingOrders.length > 0) {
+        console.log(`發現 ${pendingOrders.length} 筆待接訂單，發送通知給司機 ${driverId}`);
+        
+        // 發送通知給司機
+        let message = `🚗 司機上線通知！\n\n目前有 ${pendingOrders.length} 筆待接訂單：\n\n`;
+        
+        pendingOrders.slice(0, 3).forEach((order, index) => {
+          const location = order.favorite_type === 'code' ? `代碼: ${order.favorite_info}` : 
+                          order.favorite_type === 'address' ? `地址: ${order.favorite_info}` : '現在位置';
+          message += `${index + 1}. ${order.car_type_label} - ${location}\n`;
+        });
+        
+        if (pendingOrders.length > 3) {
+          message += `... 還有 ${pendingOrders.length - 3} 筆訂單\n`;
+        }
+        
+        message += '\n請查看司機頁面接單！';
+
+        await supabase.functions.invoke('send-line-notification', {
+          body: {
+            userId: driverId,
+            message: message
+          }
+        });
+
+        console.log('已發送待接訂單通知給司機');
+      } else {
+        console.log('目前沒有待接訂單');
+      }
+    } catch (error) {
+      console.error('檢查待接訂單失敗:', error);
+    }
+  };
+
   const updateDriverStatus = async (status: 'online' | 'offline') => {
     if (!profile?.userId) {
       console.error('無法取得用戶ID');
@@ -163,6 +211,11 @@ export const useDriverStatus = () => {
           console.error('更新司機狀態錯誤:', updateError);
           throw updateError;
         }
+      }
+
+      // 如果司機上線，檢查並通知待接訂單
+      if (status === 'online') {
+        await checkForPendingOrders(profile.userId);
       }
 
       console.log('司機狀態更新成功:', status);
