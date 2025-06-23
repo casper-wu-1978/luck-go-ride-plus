@@ -47,7 +47,7 @@ const CallCar = () => {
       loadUserData();
       loadOnlineDriversCount();
     }
-  }, [profile?.userId]);
+  }, [profile?.userId, loadUserData, loadOnlineDriversCount]);
 
   // 添加調試日誌
   useEffect(() => {

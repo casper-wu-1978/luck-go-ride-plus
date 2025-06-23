@@ -1,5 +1,5 @@
 
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -11,6 +11,9 @@ interface UseCallRecordsRealtimeProps {
 export const useCallRecordsRealtime = ({ lineUserId, onRecordUpdate }: UseCallRecordsRealtimeProps) => {
   const { toast } = useToast();
 
+  // 使用 useCallback 來穩定 onRecordUpdate 函數
+  const stableOnRecordUpdate = useCallback(onRecordUpdate, []);
+
   useEffect(() => {
     if (!lineUserId) {
       console.log('商家端 - 沒有用戶ID，跳過實時監聽設置');
@@ -19,8 +22,8 @@ export const useCallRecordsRealtime = ({ lineUserId, onRecordUpdate }: UseCallRe
 
     console.log('🔥 商家端 - 設置實時監聽器:', lineUserId);
     
-    // 使用固定的頻道名稱
-    const channelName = `call_records_${lineUserId}`;
+    // 使用更具體的頻道名稱，避免衝突
+    const channelName = `merchant_call_records_${lineUserId}`;
     
     const channel = supabase
       .channel(channelName)
@@ -33,18 +36,26 @@ export const useCallRecordsRealtime = ({ lineUserId, onRecordUpdate }: UseCallRe
           filter: `line_user_id=eq.${lineUserId}`
         },
         (payload) => {
-          console.log('🔥🔥🔥 商家收到資料庫變更事件:', payload.eventType, payload);
+          console.log('🔥🔥🔥 商家收到資料庫變更事件:', {
+            eventType: payload.eventType,
+            old: payload.old,
+            new: payload.new,
+            timestamp: new Date().toISOString()
+          });
           
           if (payload.eventType === 'UPDATE' && payload.new) {
-            console.log('🔥🔥🔥 商家收到訂單狀態更新:', payload.new);
-            console.log('🔥🔥🔥 更新狀態:', payload.new?.status);
-            console.log('🔥🔥🔥 司機資訊:', payload.new?.driver_name);
+            console.log('🔥🔥🔥 商家收到訂單狀態更新:', {
+              id: payload.new.id,
+              status: payload.new.status,
+              driver_name: payload.new.driver_name,
+              old_status: payload.old?.status
+            });
             
             // 立即調用更新函數
-            onRecordUpdate(payload.new);
+            stableOnRecordUpdate(payload.new);
             
             // 顯示狀態更新通知
-            if (payload.new?.status === 'matched') {
+            if (payload.new?.status === 'matched' && payload.new.driver_name) {
               toast({
                 title: "叫車成功！",
                 description: `司機 ${payload.new.driver_name} 已接單`,
@@ -58,14 +69,18 @@ export const useCallRecordsRealtime = ({ lineUserId, onRecordUpdate }: UseCallRe
             }
           } else if (payload.eventType === 'INSERT' && payload.new) {
             console.log('🔥🔥🔥 商家收到新訂單:', payload.new);
-            onRecordUpdate(payload.new);
+            stableOnRecordUpdate(payload.new);
           }
         }
       )
       .subscribe((status) => {
-        console.log('🔥 商家實時監聽狀態:', status);
+        console.log('🔥 商家實時監聽狀態:', status, '頻道:', channelName);
         if (status === 'SUBSCRIBED') {
-          console.log('🔥 商家實時監聽已成功訂閱');
+          console.log('🔥 商家實時監聽已成功訂閱，頻道:', channelName);
+        } else if (status === 'TIMED_OUT') {
+          console.error('🔥 商家實時監聽超時，頻道:', channelName);
+        } else if (status === 'CLOSED') {
+          console.log('🔥 商家實時監聽已關閉，頻道:', channelName);
         }
       });
 
@@ -73,5 +88,5 @@ export const useCallRecordsRealtime = ({ lineUserId, onRecordUpdate }: UseCallRe
       console.log('🔥 商家端 - 清理實時監聽器:', channelName);
       supabase.removeChannel(channel);
     };
-  }, [lineUserId, onRecordUpdate, toast]);
+  }, [lineUserId, stableOnRecordUpdate, toast]);
 };

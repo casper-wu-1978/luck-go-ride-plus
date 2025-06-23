@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { CallRecord } from "@/types/callCar";
@@ -53,14 +53,21 @@ export const useCallRecords = (lineUserId?: string) => {
     );
   };
 
-  const updateRecordFromRealtime = (updatedRecord: any) => {
-    console.log('🔥 商家端 - 處理實時更新的記錄:', updatedRecord);
-    console.log('🔥 商家端 - 記錄ID:', updatedRecord.id);
-    console.log('🔥 商家端 - 更新狀態:', updatedRecord.status);
-    console.log('🔥 商家端 - 司機資訊:', updatedRecord.driver_name);
+  // 使用 useCallback 來穩定函數
+  const updateRecordFromRealtime = useCallback((updatedRecord: any) => {
+    console.log('🔥 商家端 - 處理實時更新的記錄:', {
+      id: updatedRecord.id,
+      status: updatedRecord.status,
+      driver_name: updatedRecord.driver_name,
+      timestamp: new Date().toISOString()
+    });
     
     setCallRecords(prev => {
-      console.log('🔥 商家端 - 當前記錄列表:', prev.map(r => ({ id: r.id, status: r.status })));
+      console.log('🔥 商家端 - 當前記錄列表:', prev.map(r => ({ 
+        id: r.id, 
+        status: r.status,
+        driver: r.driverInfo?.name || 'none'
+      })));
       
       const existingIndex = prev.findIndex(record => record.id === updatedRecord.id);
       console.log('🔥 商家端 - 找到的記錄索引:', existingIndex);
@@ -116,7 +123,7 @@ export const useCallRecords = (lineUserId?: string) => {
         return [newRecord, ...prev.slice(0, MAX_CALL_RECORDS - 1)];
       }
     });
-  };
+  }, [toast]);
 
   return {
     callRecords,
