@@ -35,7 +35,7 @@ const CallCar = () => {
 
   const { userProfile } = useCallCarProfile();
 
-  // 設置實時監聽
+  // 設置實時監聽 - 確保商家端能接收司機接單通知
   useCallRecordsRealtime({
     lineUserId: profile?.userId,
     onRecordUpdate: updateRecordFromRealtime,
