@@ -11,6 +11,7 @@ interface EarningsStats {
   monthlyEarnings: number;
   totalOrders: number;
   completedOrders: number;
+  averageEarnings: number;
 }
 
 const DriverEarnings = () => {
@@ -21,6 +22,7 @@ const DriverEarnings = () => {
     monthlyEarnings: 0,
     totalOrders: 0,
     completedOrders: 0,
+    averageEarnings: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -35,7 +37,8 @@ const DriverEarnings = () => {
       const { data, error } = await supabase
         .from('call_records')
         .select('*')
-        .eq('driver_id', profile.userId);
+        .eq('driver_id', profile.userId)
+        .order('created_at', { ascending: false });
 
       if (error) {
         console.error('載入收費統計錯誤:', error);
@@ -48,19 +51,37 @@ const DriverEarnings = () => {
       const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
 
       const records = data || [];
-      const completedRecords = records.filter(r => r.status === 'matched' || r.status === 'completed');
+      const completedRecords = records.filter(r => r.status === 'completed' && r.fare_amount);
       
-      // 模擬收費計算（每單 150-300 元）
-      const todayRecords = completedRecords.filter(r => new Date(r.created_at) >= today);
-      const weeklyRecords = completedRecords.filter(r => new Date(r.created_at) >= weekAgo);
-      const monthlyRecords = completedRecords.filter(r => new Date(r.created_at) >= monthAgo);
+      // 計算今日收入
+      const todayRecords = completedRecords.filter(r => 
+        new Date(r.created_at) >= today && r.fare_amount
+      );
+      const todayEarnings = todayRecords.reduce((sum, r) => sum + parseFloat(r.fare_amount || '0'), 0);
+
+      // 計算本週收入
+      const weeklyRecords = completedRecords.filter(r => 
+        new Date(r.created_at) >= weekAgo && r.fare_amount
+      );
+      const weeklyEarnings = weeklyRecords.reduce((sum, r) => sum + parseFloat(r.fare_amount || '0'), 0);
+
+      // 計算本月收入
+      const monthlyRecords = completedRecords.filter(r => 
+        new Date(r.created_at) >= monthAgo && r.fare_amount
+      );
+      const monthlyEarnings = monthlyRecords.reduce((sum, r) => sum + parseFloat(r.fare_amount || '0'), 0);
+
+      // 計算平均收入
+      const totalEarnings = completedRecords.reduce((sum, r) => sum + parseFloat(r.fare_amount || '0'), 0);
+      const averageEarnings = completedRecords.length > 0 ? totalEarnings / completedRecords.length : 0;
 
       setStats({
-        todayEarnings: todayRecords.length * 220,
-        weeklyEarnings: weeklyRecords.length * 220,
-        monthlyEarnings: monthlyRecords.length * 220,
+        todayEarnings: Math.round(todayEarnings),
+        weeklyEarnings: Math.round(weeklyEarnings),
+        monthlyEarnings: Math.round(monthlyEarnings),
         totalOrders: records.length,
         completedOrders: completedRecords.length,
+        averageEarnings: Math.round(averageEarnings),
       });
     } catch (error) {
       console.error('載入收費統計錯誤:', error);
@@ -139,7 +160,7 @@ const DriverEarnings = () => {
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-600">平均每單收入</span>
-              <span className="font-medium">NT$ 220</span>
+              <span className="font-medium">NT$ {stats.averageEarnings}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-600">完成率</span>
