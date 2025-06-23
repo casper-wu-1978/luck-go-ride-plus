@@ -191,13 +191,62 @@ export const useDriverOrderActions = (onOrdersChanged: () => void) => {
     }
   }, [profile?.userId, toast, onOrdersChanged]);
 
-  const handleNavigate = useCallback((orderId: string) => {
-    // 這裡可以實作導航功能
-    console.log('導航到訂單:', orderId);
-    toast({
-      title: "導航功能",
-      description: "導航功能尚未實作",
-    });
+  const handleNavigate = useCallback(async (orderId: string) => {
+    try {
+      // 從資料庫獲取訂單詳細資訊
+      const { data: orderData, error } = await supabase
+        .from('call_records')
+        .select('favorite_type, favorite_info')
+        .eq('id', orderId)
+        .single();
+
+      if (error || !orderData) {
+        console.error('無法獲取訂單資訊:', error);
+        toast({
+          title: "導航失敗",
+          description: "無法獲取訂單位置資訊",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      let navigationUrl = '';
+      
+      if (orderData.favorite_type === 'current') {
+        // 如果是現在位置，提示司機聯繫乘客
+        toast({
+          title: "無法導航",
+          description: "乘客選擇「現在位置」，請直接聯繫乘客確認位置",
+          variant: "destructive"
+        });
+        return;
+      } else if (orderData.favorite_type === 'code') {
+        // 如果是代碼，搜索該代碼
+        navigationUrl = `https://www.google.com/maps/search/${encodeURIComponent(orderData.favorite_info || '')}`;
+      } else if (orderData.favorite_type === 'address') {
+        // 如果是地址，直接導航到該地址
+        navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(orderData.favorite_info || '')}`;
+      }
+
+      if (navigationUrl) {
+        // 開啟Google地圖
+        window.open(navigationUrl, '_blank');
+        
+        toast({
+          title: "已開啟導航",
+          description: "Google地圖已開啟，請依照指示前往乘客位置",
+        });
+        
+        console.log('已開啟Google地圖導航:', navigationUrl);
+      }
+    } catch (error) {
+      console.error('導航錯誤:', error);
+      toast({
+        title: "導航失敗",
+        description: "無法開啟導航功能",
+        variant: "destructive"
+      });
+    }
   }, [toast]);
 
   return {
