@@ -3,6 +3,7 @@ import { useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useLiff } from "@/contexts/LiffContext";
 import { driverOrderService } from "@/services/driverOrderService";
+import { updateCallRecord } from "@/utils/callCarApi";
 import type { OrderCompletionData } from "@/types/driverOrders";
 
 export const useDriverOrderActions = (onOrdersChanged: () => void) => {
@@ -29,7 +30,27 @@ export const useDriverOrderActions = (onOrdersChanged: () => void) => {
     }
 
     try {
+      // 先通過 driverOrderService 接單
       await driverOrderService.acceptOrder(orderId, profile.userId);
+      
+      // 然後更新訂單狀態並觸發 LINE 通知
+      // 這裡需要從訂單中取得商家的 line_user_id
+      const { data: orderData } = await supabase
+        .from('call_records')
+        .select('line_user_id, car_type_label')
+        .eq('id', orderId)
+        .single();
+
+      if (orderData) {
+        await updateCallRecord(orderId, 'matched', {
+          name: profile.displayName || '司機',
+          phone: '', // 這裡可以從司機資料中取得
+          plateNumber: '',
+          carBrand: '',
+          carColor: ''
+        }, orderData.line_user_id);
+      }
+
       toast({
         title: "接單成功",
         description: "已成功接受訂單",
@@ -43,7 +64,7 @@ export const useDriverOrderActions = (onOrdersChanged: () => void) => {
         variant: "destructive"
       });
     }
-  }, [profile?.userId, toast, onOrdersChanged]);
+  }, [profile?.userId, profile?.displayName, toast, onOrdersChanged]);
 
   const handleArriveOrder = useCallback(async (orderId: string) => {
     if (!profile?.userId) {
@@ -57,7 +78,21 @@ export const useDriverOrderActions = (onOrdersChanged: () => void) => {
 
     try {
       console.log('司機抵達訂單:', orderId, '司機ID:', profile.userId);
+      
+      // 先通過 driverOrderService 更新狀態
       await driverOrderService.arriveAtOrder(orderId, profile.userId);
+      
+      // 取得商家的 line_user_id 並發送通知
+      const { data: orderData } = await supabase
+        .from('call_records')
+        .select('line_user_id')
+        .eq('id', orderId)
+        .single();
+
+      if (orderData) {
+        await updateCallRecord(orderId, 'arrived', undefined, orderData.line_user_id);
+      }
+
       toast({
         title: "已抵達",
         description: "已通知乘客您已抵達上車地點",
@@ -84,7 +119,21 @@ export const useDriverOrderActions = (onOrdersChanged: () => void) => {
     }
 
     try {
+      // 先通過 driverOrderService 完成訂單
       const result = await driverOrderService.completeOrder(orderId, profile.userId, completionData);
+      
+      // 取得商家的 line_user_id 並發送通知
+      const { data: orderData } = await supabase
+        .from('call_records')
+        .select('line_user_id')
+        .eq('id', orderId)
+        .single();
+
+      if (orderData) {
+        const newStatus = result.newStatus === 'completed' ? 'completed' : 'in_progress';
+        await updateCallRecord(orderId, newStatus, undefined, orderData.line_user_id);
+      }
+
       toast({
         title: result.newStatus === 'completed' ? '訂單已完成' : '行程已開始',
         description: result.message,
@@ -112,7 +161,21 @@ export const useDriverOrderActions = (onOrdersChanged: () => void) => {
 
     try {
       console.log('取消訂單:', orderId);
+      
+      // 先通過 driverOrderService 取消訂單
       await driverOrderService.cancelOrder(orderId, profile.userId);
+      
+      // 取得商家的 line_user_id 並發送通知
+      const { data: orderData } = await supabase
+        .from('call_records')
+        .select('line_user_id')
+        .eq('id', orderId)
+        .single();
+
+      if (orderData) {
+        await updateCallRecord(orderId, 'cancelled', undefined, orderData.line_user_id);
+      }
+
       toast({
         title: "已取消訂單",
         description: "訂單已成功取消",
