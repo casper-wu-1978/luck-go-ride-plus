@@ -4,7 +4,7 @@ import { useLiff } from "@/contexts/LiffContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileText, MapPin, Clock, Car } from "lucide-react";
+import { FileText, MapPin, Clock, Car, Navigation, DollarSign } from "lucide-react";
 
 interface DriverRecord {
   id: string;
@@ -13,6 +13,9 @@ interface DriverRecord {
   timestamp: Date;
   favoriteInfo?: string;
   favoriteType: string;
+  destinationAddress?: string;
+  distanceKm?: number;
+  fareAmount?: number;
 }
 
 const DriverHistory = () => {
@@ -47,6 +50,9 @@ const DriverHistory = () => {
         timestamp: new Date(record.created_at),
         favoriteInfo: record.favorite_info || undefined,
         favoriteType: record.favorite_type,
+        destinationAddress: record.destination_address || undefined,
+        distanceKm: record.distance_km || undefined,
+        fareAmount: record.fare_amount || undefined,
       }));
 
       setRecords(formattedRecords);
@@ -61,11 +67,24 @@ const DriverHistory = () => {
     const statusMap = {
       waiting: { label: '等待中', variant: 'secondary' as const },
       matched: { label: '已接單', variant: 'default' as const },
+      arrived: { label: '已抵達', variant: 'default' as const },
+      in_progress: { label: '行程中', variant: 'default' as const },
       completed: { label: '已完成', variant: 'outline' as const },
       failed: { label: '失敗', variant: 'destructive' as const },
+      cancelled: { label: '已取消', variant: 'secondary' as const },
     };
     
     return statusMap[status as keyof typeof statusMap] || { label: status, variant: 'secondary' as const };
+  };
+
+  const getPickupLocationText = (favoriteType: string, favoriteInfo?: string) => {
+    if (favoriteType === 'code') {
+      return `代碼: ${favoriteInfo}`;
+    } else if (favoriteType === 'address') {
+      return `地址: ${favoriteInfo}`;
+    } else {
+      return '現在位置';
+    }
   };
 
   if (isLoading) {
@@ -108,17 +127,54 @@ const DriverHistory = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div className="flex items-center text-sm text-gray-600">
                     <Clock className="h-4 w-4 mr-2" />
                     {record.timestamp.toLocaleString('zh-TW')}
                   </div>
                   
-                  <div className="flex items-center text-sm text-gray-600">
-                    <MapPin className="h-4 w-4 mr-2" />
-                    {record.favoriteType === 'code' ? `代碼: ${record.favoriteInfo}` : 
-                     record.favoriteType === 'address' ? `地址: ${record.favoriteInfo}` : '現在位置'}
+                  {/* 上車點 */}
+                  <div className="flex items-start text-sm text-gray-600">
+                    <MapPin className="h-4 w-4 mr-2 mt-0.5 text-green-600" />
+                    <div>
+                      <span className="font-medium text-green-700">上車點: </span>
+                      {getPickupLocationText(record.favoriteType, record.favoriteInfo)}
+                    </div>
                   </div>
+
+                  {/* 目的地 (只在有資料時顯示) */}
+                  {record.destinationAddress && (
+                    <div className="flex items-start text-sm text-gray-600">
+                      <Navigation className="h-4 w-4 mr-2 mt-0.5 text-red-600" />
+                      <div>
+                        <span className="font-medium text-red-700">目的地: </span>
+                        {record.destinationAddress}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 距離和金額 (只在已完成的訂單中顯示) */}
+                  {record.status === 'completed' && (record.distanceKm || record.fareAmount) && (
+                    <div className="bg-blue-50 p-3 rounded-lg mt-3">
+                      <h4 className="font-semibold text-blue-800 mb-2">行程資訊</h4>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        {record.distanceKm && (
+                          <div className="flex items-center">
+                            <Car className="h-4 w-4 mr-1 text-blue-600" />
+                            <span className="font-medium">距離: </span>
+                            <span>{record.distanceKm} 公里</span>
+                          </div>
+                        )}
+                        {record.fareAmount && (
+                          <div className="flex items-center">
+                            <DollarSign className="h-4 w-4 mr-1 text-green-600" />
+                            <span className="font-medium">車資: </span>
+                            <span>NT$ {record.fareAmount}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
