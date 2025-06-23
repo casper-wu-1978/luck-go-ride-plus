@@ -74,11 +74,11 @@ export const useCallRecords = (lineUserId?: string) => {
 
   const cancelRecord = useCallback(async (recordId: string) => {
     console.log('取消叫車記錄:', recordId);
-    await updateCallRecord(recordId, 'cancelled');
+    await updateCallRecord(recordId, 'cancelled', undefined, lineUserId);
     
     // 取消後從列表中移除該記錄
     setCallRecords(prev => prev.filter(record => record.id !== recordId));
-  }, []);
+  }, [lineUserId]);
 
   // 穩定的更新函數 - 使用 useCallback 並移除 toast 依賴
   const updateRecordFromRealtime = useCallback((updatedRecord: any) => {
@@ -119,6 +119,13 @@ export const useCallRecords = (lineUserId?: string) => {
         console.log('🔥 更新前記錄:', oldRecord);
         console.log('🔥 更新後記錄:', updatedRecords[existingIndex]);
         
+        // 當狀態變更時，觸發 LINE 通知（只有在實時更新時才需要，因為手動更新已經在 updateCallRecord 中處理了）
+        if (oldRecord.status !== updatedRecord.status && lineUserId) {
+          console.log('🔥 狀態變更，準備發送通知:', oldRecord.status, '->', updatedRecord.status);
+          // 這裡不直接調用通知函數，因為通知應該由後端統一處理
+          // 避免重複通知的問題
+        }
+        
         return updatedRecords;
       } else {
         // 新記錄（但只有在未完成狀態時才添加）
@@ -145,7 +152,7 @@ export const useCallRecords = (lineUserId?: string) => {
         return prev;
       }
     });
-  }, []);
+  }, [lineUserId]);
 
   useEffect(() => {
     if (lineUserId) {

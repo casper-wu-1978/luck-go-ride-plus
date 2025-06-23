@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { CallRecord, FavoriteCode, FavoriteAddress } from "@/types/callCar";
 
@@ -91,6 +92,14 @@ export const createCallRecord = async (
     throw error;
   }
 
+  // 發送叫車成功通知
+  try {
+    await sendLineNotification(lineUserId, `🚕 叫車請求已送出！\n\n車型：${carTypeLabel}\n狀態：等待司機接單\n\n請耐心等候，我們會在司機接單時立即通知您。`);
+  } catch (notificationError) {
+    console.error('發送叫車通知錯誤:', notificationError);
+    // 不影響主要功能，繼續執行
+  }
+
   return {
     id: newRecord.id,
     carType: newRecord.car_type,
@@ -104,7 +113,7 @@ export const createCallRecord = async (
 
 export const updateCallRecord = async (
   recordId: string,
-  status: 'matched' | 'failed' | 'cancelled',
+  status: 'matched' | 'arrived' | 'in_progress' | 'completed' | 'failed' | 'cancelled',
   driverInfo?: {
     name: string;
     phone: string;
@@ -130,33 +139,54 @@ export const updateCallRecord = async (
     throw error;
   }
 
-  // Send LINE notification for matched or failed status
-  if ((status === 'matched' || status === 'failed') && lineUserId) {
+  // 根據不同狀態發送相應的 LINE 通知
+  if (lineUserId) {
     try {
       let message = '';
-      if (status === 'matched' && driverInfo) {
-        message = `🚗 叫車成功！\n\n司機資訊：\n姓名：${driverInfo.name}\n電話：${driverInfo.phone}\n車牌：${driverInfo.plateNumber}\n車款：${driverInfo.carBrand} (${driverInfo.carColor})\n\n預計5分鐘後到達，請準備上車！`;
-      } else if (status === 'failed') {
-        message = `❌ 叫車失敗\n\n很抱歉，目前無法找到合適的司機。\n請稍後再試或選擇其他車型。`;
+      
+      switch (status) {
+        case 'matched':
+          if (driverInfo) {
+            message = `✅ 司機已接單！\n\n司機資訊：\n👤 姓名：${driverInfo.name}\n📞 電話：${driverInfo.phone}\n🚗 車牌：${driverInfo.plateNumber}\n🚙 車款：${driverInfo.carBrand} (${driverInfo.carColor})\n\n司機正在前往您的位置，請耐心等候！`;
+          }
+          break;
+          
+        case 'arrived':
+          message = `🎯 司機已抵達！\n\n司機已到達您的位置，請準備上車。\n如有任何問題，請直接聯繫司機。`;
+          break;
+          
+        case 'in_progress':
+          message = `🚗 行程開始！\n\n行程已開始進行中，請繫好安全帶。\n祝您旅途愉快！`;
+          break;
+          
+        case 'completed':
+          message = `🏁 行程完成！\n\n感謝您使用我們的叫車服務！\n本次行程已順利完成，期待下次為您服務。\n\n💰 回饋金將於明日計算並加入您的帳戶`;
+          break;
+          
+        case 'failed':
+          message = `❌ 媒合失敗\n\n很抱歉，目前無法找到合適的司機。\n可能原因：\n• 附近暫無可用司機\n• 尖峰時段需求量大\n\n建議：\n• 稍後再試\n• 選擇其他車型\n• 聯繫客服協助`;
+          break;
+          
+        case 'cancelled':
+          message = `🚫 訂單已取消\n\n您的叫車請求已成功取消。\n如需重新叫車，請隨時使用我們的服務。`;
+          break;
       }
 
       if (message) {
-        await supabase.functions.invoke('send-line-notification', {
-          body: {
-            userId: lineUserId,
-            message: message
-          }
-        });
+        await sendLineNotification(lineUserId, message);
+        console.log(`已發送 ${status} 狀態通知給用戶 ${lineUserId}`);
       }
-    } catch (error) {
-      console.error('發送 LINE 推播錯誤:', error);
-      // Don't throw error here, as the main operation (updating record) was successful
+    } catch (notificationError) {
+      console.error('發送狀態更新通知錯誤:', notificationError);
+      // 通知失敗不影響主要功能，記錄錯誤即可
     }
   }
 };
 
 export const sendLineNotification = async (lineUserId: string, message: string) => {
   try {
+    console.log(`準備發送 LINE 通知給用戶 ${lineUserId}:`, message);
+    
     const { data, error } = await supabase.functions.invoke('send-line-notification', {
       body: {
         userId: lineUserId,
@@ -165,13 +195,14 @@ export const sendLineNotification = async (lineUserId: string, message: string) 
     });
 
     if (error) {
-      console.error('LINE 推播錯誤:', error);
+      console.error('LINE 推播 API 錯誤:', error);
       throw error;
     }
 
+    console.log('LINE 通知發送成功:', data);
     return data;
   } catch (error) {
-    console.error('發送 LINE 推播錯誤:', error);
+    console.error('發送 LINE 通知失敗:', error);
     throw error;
   }
 };
