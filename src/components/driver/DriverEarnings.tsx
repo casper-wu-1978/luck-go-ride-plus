@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useLiff } from "@/contexts/LiffContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -57,22 +56,22 @@ const DriverEarnings = () => {
       const todayRecords = completedRecords.filter(r => 
         new Date(r.created_at) >= today && r.fare_amount
       );
-      const todayEarnings = todayRecords.reduce((sum, r) => sum + parseFloat(r.fare_amount || '0'), 0);
+      const todayEarnings = todayRecords.reduce((sum, r) => sum + parseFloat(String(r.fare_amount)), 0);
 
       // 計算本週收入
       const weeklyRecords = completedRecords.filter(r => 
         new Date(r.created_at) >= weekAgo && r.fare_amount
       );
-      const weeklyEarnings = weeklyRecords.reduce((sum, r) => sum + parseFloat(r.fare_amount || '0'), 0);
+      const weeklyEarnings = weeklyRecords.reduce((sum, r) => sum + parseFloat(String(r.fare_amount)), 0);
 
       // 計算本月收入
       const monthlyRecords = completedRecords.filter(r => 
         new Date(r.created_at) >= monthAgo && r.fare_amount
       );
-      const monthlyEarnings = monthlyRecords.reduce((sum, r) => sum + parseFloat(r.fare_amount || '0'), 0);
+      const monthlyEarnings = monthlyRecords.reduce((sum, r) => sum + parseFloat(String(r.fare_amount)), 0);
 
       // 計算平均收入
-      const totalEarnings = completedRecords.reduce((sum, r) => sum + parseFloat(r.fare_amount || '0'), 0);
+      const totalEarnings = completedRecords.reduce((sum, r) => sum + parseFloat(String(r.fare_amount)), 0);
       const averageEarnings = completedRecords.length > 0 ? totalEarnings / completedRecords.length : 0;
 
       setStats({
