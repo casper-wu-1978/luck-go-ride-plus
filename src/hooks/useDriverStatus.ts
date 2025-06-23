@@ -23,7 +23,7 @@ export const useDriverStatus = () => {
     if (!profile?.userId) return;
 
     try {
-      console.log('檢查司機狀態:', profile.userId);
+      console.log('🔍 檢查司機狀態:', profile.userId);
       const { data, error } = await supabase
         .from('driver_profiles')
         .select('status')
@@ -31,18 +31,18 @@ export const useDriverStatus = () => {
         .maybeSingle();
 
       if (error) {
-        console.error('檢查司機狀態錯誤:', error);
+        console.error('❌ 檢查司機狀態錯誤:', error);
         return;
       }
 
       if (data && data.status === 'online') {
         setIsOnline(true);
-        console.log('司機目前狀態: 線上');
+        console.log('✅ 司機目前狀態: 線上');
       } else {
-        console.log('司機目前狀態: 離線');
+        console.log('📴 司機目前狀態: 離線');
       }
     } catch (error) {
-      console.error('檢查司機狀態錯誤:', error);
+      console.error('❌ 檢查司機狀態異常:', error);
     }
   };
 
@@ -50,12 +50,13 @@ export const useDriverStatus = () => {
     try {
       const { data, error } = await supabase.functions.invoke('get-mapbox-token');
       if (error) {
-        console.error('無法獲取 Mapbox token:', error);
+        console.error('❌ 無法獲取 Mapbox token:', error);
         return;
       }
       setMapboxToken(data.token);
+      console.log('✅ Mapbox token 載入成功');
     } catch (error) {
-      console.error('載入 Mapbox token 錯誤:', error);
+      console.error('❌ 載入 Mapbox token 錯誤:', error);
     }
   };
 
@@ -101,7 +102,7 @@ export const useDriverStatus = () => {
         description: "已獲取您的當前位置",
       });
     } catch (error) {
-      console.error('定位錯誤:', error);
+      console.error('❌ 定位錯誤:', error);
       setCurrentLocation("無法獲取位置");
       toast({
         title: "定位失敗",
@@ -113,9 +114,33 @@ export const useDriverStatus = () => {
     }
   };
 
+  const sendLineNotification = async (userId: string, message: string) => {
+    try {
+      console.log('📤 準備發送 LINE 通知:', { userId: userId.substring(0, 10) + '...', messageLength: message.length });
+      
+      const { data, error } = await supabase.functions.invoke('send-line-notification', {
+        body: {
+          userId: userId,
+          message: message
+        }
+      });
+
+      if (error) {
+        console.error('❌ LINE 通知發送失敗:', error);
+        throw error;
+      }
+
+      console.log('✅ LINE 通知發送成功:', data);
+      return data;
+    } catch (error) {
+      console.error('❌ 發送 LINE 通知異常:', error);
+      throw error;
+    }
+  };
+
   const checkForPendingOrders = async (driverId: string) => {
     try {
-      console.log(`🚗 司機 ${driverId} 檢查待接訂單...`);
+      console.log(`🔍 司機 ${driverId} 檢查待接訂單...`);
       
       const { data: pendingOrders, error } = await supabase
         .from('call_records')
@@ -152,35 +177,21 @@ export const useDriverStatus = () => {
         
         message += '\n請查看司機頁面接單！';
 
-        console.log('📤 準備發送LINE通知:', message);
+        console.log('📝 準備發送的訊息內容:', message);
 
         try {
-          const { data: notificationResult, error: notificationError } = await supabase.functions.invoke('send-line-notification', {
-            body: {
-              userId: driverId,
-              message: message
-            }
-          });
-
-          if (notificationError) {
-            console.error('❌ 發送LINE通知錯誤:', notificationError);
-            toast({
-              title: "通知發送失敗",
-              description: `LINE通知錯誤: ${notificationError.message}`,
-              variant: "destructive",
-            });
-          } else {
-            console.log('✅ LINE通知發送成功:', notificationResult);
-            toast({
-              title: "通知已發送",
-              description: `已通知司機有 ${pendingOrders.length} 筆待接訂單`,
-            });
-          }
-        } catch (notificationError) {
-          console.error('❌ 發送通知失敗:', notificationError);
+          await sendLineNotification(driverId, message);
+          console.log('✅ 司機上線通知發送成功');
+          
           toast({
-            title: "通知發送失敗",
-            description: "LINE通知服務異常，請檢查網路連接",
+            title: "通知已發送",
+            description: `已通知您有 ${pendingOrders.length} 筆待接訂單`,
+          });
+        } catch (notificationError) {
+          console.error('❌ 發送 LINE 通知失敗:', notificationError);
+          toast({
+            title: "通知發送失敗", 
+            description: "LINE 通知服務異常，但您仍可查看待接訂單",
             variant: "destructive",
           });
         }
@@ -264,7 +275,7 @@ export const useDriverStatus = () => {
       // 如果司機上線，檢查並通知待接訂單
       if (status === 'online') {
         console.log('🔍 司機上線，開始檢查待接訂單...');
-        // 延遲一下確保資料庫更新完成
+        // 稍等一下確保資料庫更新完成
         setTimeout(() => {
           checkForPendingOrders(profile.userId);
         }, 1000);

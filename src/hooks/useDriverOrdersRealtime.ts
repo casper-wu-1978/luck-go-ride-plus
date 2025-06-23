@@ -21,6 +21,30 @@ export const useDriverOrdersRealtime = ({ onOrderUpdate }: UseDriverOrdersRealti
   const channelRef = useRef<any>(null);
   const isSubscribedRef = useRef(false);
 
+  const sendLineNotification = async (userId: string, message: string) => {
+    try {
+      console.log('📤 發送 LINE 通知:', { userId: userId.substring(0, 10) + '...', messageLength: message.length });
+      
+      const { data, error } = await supabase.functions.invoke('send-line-notification', {
+        body: {
+          userId: userId,
+          message: message
+        }
+      });
+
+      if (error) {
+        console.error('❌ LINE 通知發送失敗:', error);
+        return false;
+      }
+
+      console.log('✅ LINE 通知發送成功:', data);
+      return true;
+    } catch (error) {
+      console.error('❌ 發送 LINE 通知異常:', error);
+      return false;
+    }
+  };
+
   useEffect(() => {
     if (!profile?.userId) {
       console.log('❌ 司機端 - 沒有用戶ID，跳過實時監聽設置');
@@ -49,7 +73,7 @@ export const useDriverOrdersRealtime = ({ onOrderUpdate }: UseDriverOrdersRealti
           schema: 'public',
           table: 'call_records'
         },
-        (payload: RealtimePayload) => {
+        async (payload: RealtimePayload) => {
           console.log('🚗🔥 司機收到資料庫變更:', {
             eventType: payload.eventType,
             recordId: payload.new?.id || payload.old?.id,
@@ -69,6 +93,7 @@ export const useDriverOrdersRealtime = ({ onOrderUpdate }: UseDriverOrdersRealti
               payload.new.favorite_type === 'address' ? 
               `地址: ${payload.new.favorite_info}` : '現在位置';
             
+            // 顯示應用內通知
             toast({
               title: "🚕 新的待接訂單！",
               description: `${payload.new.car_type_label} - ${location}`,
@@ -76,7 +101,15 @@ export const useDriverOrdersRealtime = ({ onOrderUpdate }: UseDriverOrdersRealti
             });
             
             // 發送 LINE 通知給司機
-            sendNewOrderNotification(payload.new);
+            const lineMessage = `🚕 新訂單通知！\n\n車型：${payload.new.car_type_label}\n上車位置：${location}\n\n請儘快查看並接單！`;
+            
+            const notificationSent = await sendLineNotification(profile.userId, lineMessage);
+            if (notificationSent) {
+              console.log('✅ 新訂單 LINE 通知發送成功');
+            } else {
+              console.error('❌ 新訂單 LINE 通知發送失敗');
+            }
+            
             onOrderUpdate();
           }
           
@@ -126,36 +159,6 @@ export const useDriverOrdersRealtime = ({ onOrderUpdate }: UseDriverOrdersRealti
       }
     };
   }, [profile?.userId, onOrderUpdate, toast]);
-
-  const sendNewOrderNotification = async (orderData: any) => {
-    if (!profile?.userId) return;
-
-    try {
-      const location = orderData.favorite_type === 'code' ? 
-        `代碼: ${orderData.favorite_info}` : 
-        orderData.favorite_type === 'address' ? 
-        `地址: ${orderData.favorite_info}` : '現在位置';
-
-      const message = `🚕 新訂單通知！\n\n車型：${orderData.car_type_label}\n上車位置：${location}\n\n請儘快查看並接單！`;
-
-      console.log('📤 發送新訂單LINE通知給司機:', profile.userId);
-
-      const { data, error } = await supabase.functions.invoke('send-line-notification', {
-        body: {
-          userId: profile.userId,
-          message: message
-        }
-      });
-
-      if (error) {
-        console.error('❌ 發送新訂單通知失敗:', error);
-      } else {
-        console.log('✅ 新訂單通知發送成功:', data);
-      }
-    } catch (error) {
-      console.error('❌ 發送新訂單通知異常:', error);
-    }
-  };
 
   return {
     isConnected: isSubscribedRef.current
