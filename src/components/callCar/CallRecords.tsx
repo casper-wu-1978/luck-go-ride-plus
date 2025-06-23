@@ -2,7 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Clock, X, User, Phone, Car, Building, MapPin, Hash } from "lucide-react";
+import { Clock, X, User, Phone, Car, Building, MapPin, Hash, CheckCircle, Navigation, Play, Flag } from "lucide-react";
 import { CallRecord } from "@/types/callCar";
 import { UserProfile } from "@/types/profile";
 
@@ -16,7 +16,10 @@ const CallRecords = ({ callRecords, userProfile, onCancelCall }: CallRecordsProp
   const getStatusText = (status: string) => {
     switch (status) {
       case 'waiting': return '等待媒合中...';
-      case 'matched': return '媒合成功';
+      case 'matched': return '司機已接單';
+      case 'arrived': return '司機已抵達';
+      case 'in_progress': return '行程進行中';
+      case 'completed': return '行程已完成';
       case 'failed': return '媒合失敗';
       case 'cancelled': return '已取消';
       default: return '';
@@ -26,10 +29,26 @@ const CallRecords = ({ callRecords, userProfile, onCancelCall }: CallRecordsProp
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'waiting': return 'text-yellow-600';
-      case 'matched': return 'text-green-600';
+      case 'matched': return 'text-blue-600';
+      case 'arrived': return 'text-green-600';
+      case 'in_progress': return 'text-purple-600';
+      case 'completed': return 'text-green-800';
       case 'failed': return 'text-red-600';
       case 'cancelled': return 'text-gray-600';
       default: return '';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'waiting': return <Clock className="h-4 w-4" />;
+      case 'matched': return <CheckCircle className="h-4 w-4" />;
+      case 'arrived': return <Navigation className="h-4 w-4" />;
+      case 'in_progress': return <Play className="h-4 w-4" />;
+      case 'completed': return <Flag className="h-4 w-4" />;
+      case 'failed': return <X className="h-4 w-4" />;
+      case 'cancelled': return <X className="h-4 w-4" />;
+      default: return <Clock className="h-4 w-4" />;
     }
   };
 
@@ -59,9 +78,10 @@ const CallRecords = ({ callRecords, userProfile, onCancelCall }: CallRecordsProp
                   </span>
                 </div>
                 <div className="flex items-center space-x-3">
-                  <span className={`text-base font-semibold ${getStatusColor(record.status)}`}>
-                    {getStatusText(record.status)}
-                  </span>
+                  <div className={`flex items-center space-x-2 text-base font-semibold ${getStatusColor(record.status)}`}>
+                    {getStatusIcon(record.status)}
+                    <span>{getStatusText(record.status)}</span>
+                  </div>
                   {record.status === 'waiting' && (
                     <Button
                       size="sm"
@@ -77,7 +97,7 @@ const CallRecords = ({ callRecords, userProfile, onCancelCall }: CallRecordsProp
               </div>
               
               {/* Driver Information */}
-              {record.status === 'matched' && record.driverInfo && (
+              {(record.status === 'matched' || record.status === 'arrived' || record.status === 'in_progress' || record.status === 'completed') && record.driverInfo && (
                 <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded">
                   <div className="text-blue-800 font-medium text-sm mb-2">司機資訊</div>
                   <div className="grid grid-cols-1 gap-2">
@@ -154,6 +174,30 @@ const CallRecords = ({ callRecords, userProfile, onCancelCall }: CallRecordsProp
                   <div className="text-sm text-gray-600 mt-2">
                     正在為您尋找最適合的司機...
                   </div>
+                </div>
+              )}
+
+              {record.status === 'matched' && (
+                <div className="mt-3 p-2 bg-blue-100 rounded text-sm text-blue-800">
+                  司機正在前往您的位置，請耐心等候
+                </div>
+              )}
+
+              {record.status === 'arrived' && (
+                <div className="mt-3 p-2 bg-green-100 rounded text-sm text-green-800">
+                  司機已抵達，請準備上車！
+                </div>
+              )}
+
+              {record.status === 'in_progress' && (
+                <div className="mt-3 p-2 bg-purple-100 rounded text-sm text-purple-800">
+                  行程進行中，請繫好安全帶
+                </div>
+              )}
+
+              {record.status === 'completed' && (
+                <div className="mt-3 p-2 bg-green-200 rounded text-sm text-green-900">
+                  行程已完成，感謝您的使用！
                 </div>
               )}
             </div>

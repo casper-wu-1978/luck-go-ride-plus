@@ -3,7 +3,7 @@ export interface CallRecord {
   id: string;
   carType: string;
   carTypeLabel: string;
-  status: 'waiting' | 'matched' | 'failed' | 'cancelled';
+  status: 'waiting' | 'matched' | 'arrived' | 'in_progress' | 'completed' | 'failed' | 'cancelled';
   timestamp: Date;
   favoriteType: string;
   favoriteInfo?: string;

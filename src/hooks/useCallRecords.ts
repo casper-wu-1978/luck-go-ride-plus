@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -73,7 +72,7 @@ export const useCallRecords = (lineUserId?: string) => {
         
         updatedRecords[existingIndex] = {
           ...oldRecord,
-          status: updatedRecord.status as 'waiting' | 'matched' | 'failed' | 'cancelled',
+          status: updatedRecord.status as 'waiting' | 'matched' | 'arrived' | 'in_progress' | 'completed' | 'failed' | 'cancelled',
           driverInfo: updatedRecord.driver_name ? {
             name: updatedRecord.driver_name,
             phone: updatedRecord.driver_phone || '',
@@ -94,7 +93,7 @@ export const useCallRecords = (lineUserId?: string) => {
           id: updatedRecord.id,
           carType: updatedRecord.car_type,
           carTypeLabel: updatedRecord.car_type_label,
-          status: updatedRecord.status as 'waiting' | 'matched' | 'failed' | 'cancelled',
+          status: updatedRecord.status as 'waiting' | 'matched' | 'arrived' | 'in_progress' | 'completed' | 'failed' | 'cancelled',
           timestamp: new Date(updatedRecord.created_at),
           favoriteType: updatedRecord.favorite_type,
           favoriteInfo: updatedRecord.favorite_info || undefined,
@@ -109,17 +108,7 @@ export const useCallRecords = (lineUserId?: string) => {
         return [newRecord, ...prev.slice(0, MAX_CALL_RECORDS - 1)];
       }
     });
-
-    // 分離 toast 通知邏輯，避免在 useCallback 依賴中包含 toast
-    if (updatedRecord.status === 'matched' && updatedRecord.driver_name) {
-      setTimeout(() => {
-        toast({
-          title: "司機已接單！",
-          description: `司機 ${updatedRecord.driver_name} 已接受您的叫車請求`,
-        });
-      }, 100);
-    }
-  }, [toast]);
+  }, []);
 
   useEffect(() => {
     if (lineUserId) {

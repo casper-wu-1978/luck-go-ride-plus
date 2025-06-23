@@ -55,6 +55,7 @@ export const useCallRecordsRealtime = ({ lineUserId, onRecordUpdate }: UseCallRe
             recordId: payload.new?.id || payload.old?.id,
             status: payload.new?.status,
             driver_name: payload.new?.driver_name,
+            oldStatus: payload.old?.status,
             timestamp: new Date().toISOString()
           });
           
@@ -62,15 +63,73 @@ export const useCallRecordsRealtime = ({ lineUserId, onRecordUpdate }: UseCallRe
             console.log('🔥 處理記錄更新');
             onRecordUpdate(payload.new);
             
-            // 顯示司機接單通知
+            // 處理各種狀態變更的通知
+            const newStatus = payload.new.status;
+            const oldStatus = payload.old?.status;
+            const driverName = payload.new.driver_name;
+            
+            // 司機接單通知
             if (payload.eventType === 'UPDATE' && 
-                payload.new.status === 'matched' && 
-                payload.new.driver_name &&
-                payload.old?.status !== 'matched') {
+                newStatus === 'matched' && 
+                driverName &&
+                oldStatus !== 'matched') {
               
               toast({
-                title: "叫車成功！",
-                description: `司機 ${payload.new.driver_name} 已接單`,
+                title: "司機已接單！",
+                description: `司機 ${driverName} 已接受您的叫車請求`,
+                duration: 5000,
+              });
+            }
+            
+            // 司機已抵達通知
+            if (payload.eventType === 'UPDATE' && 
+                newStatus === 'arrived' && 
+                driverName &&
+                oldStatus !== 'arrived') {
+              
+              toast({
+                title: "司機已抵達！",
+                description: `司機 ${driverName} 已到達上車地點，請準備上車`,
+                duration: 8000,
+              });
+            }
+            
+            // 行程開始通知
+            if (payload.eventType === 'UPDATE' && 
+                newStatus === 'in_progress' && 
+                driverName &&
+                oldStatus !== 'in_progress') {
+              
+              toast({
+                title: "行程已開始！",
+                description: `司機 ${driverName} 已開始行程`,
+                duration: 5000,
+              });
+            }
+            
+            // 行程完成通知
+            if (payload.eventType === 'UPDATE' && 
+                newStatus === 'completed' && 
+                driverName &&
+                oldStatus !== 'completed') {
+              
+              toast({
+                title: "行程已完成！",
+                description: `感謝您使用我們的叫車服務`,
+                duration: 6000,
+              });
+            }
+            
+            // 行程取消或失敗通知
+            if (payload.eventType === 'UPDATE' && 
+                (newStatus === 'cancelled' || newStatus === 'failed') &&
+                oldStatus !== newStatus) {
+              
+              const message = newStatus === 'cancelled' ? '行程已取消' : '叫車失敗';
+              toast({
+                title: message,
+                description: newStatus === 'cancelled' ? '行程已被取消' : '很抱歉，無法找到合適的司機',
+                variant: "destructive",
                 duration: 5000,
               });
             }
