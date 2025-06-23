@@ -15,7 +15,8 @@ const DriverOrders = () => {
     acceptOrder,
     handleNavigate,
     handleCancelOrder,
-    handleCompleteOrder
+    handleCompleteOrder,
+    handleArriveOrder // New function for arrive action
   } = useDriverOrders();
   const { 
     isOnline, 
@@ -66,6 +67,7 @@ const DriverOrders = () => {
                 onNavigate={handleNavigate}
                 onCancel={handleCancelOrder}
                 onComplete={handleCompleteOrder}
+                onArrive={handleArriveOrder}
               />
             ))}
           </div>
