@@ -60,9 +60,34 @@ const AcceptedOrderCard = ({ order, onNavigate, onCancel, onComplete, onArrive }
     } else if (order.favoriteType === 'address') {
       return `地址: ${order.favoriteInfo}`;
     } else if (order.favoriteType === 'current' && order.merchantInfo) {
+      // 顯示商家地址而不是「現在位置」
       return `商家地址: ${order.merchantInfo.businessAddress}`;
     }
-    return '現在位置';
+    return '位置資訊不明';
+  };
+
+  const handleNavigateClick = () => {
+    // 直接處理導航邏輯而不是依賴外部函數
+    let navigationUrl = '';
+    
+    if (order.favoriteType === 'current' && order.merchantInfo?.businessAddress) {
+      // 如果是現在位置，導航到商家地址
+      navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(order.merchantInfo.businessAddress)}`;
+    } else if (order.favoriteType === 'code' && order.favoriteInfo) {
+      // 如果是代碼，搜索該代碼
+      navigationUrl = `https://www.google.com/maps/search/${encodeURIComponent(order.favoriteInfo)}`;
+    } else if (order.favoriteType === 'address' && order.favoriteInfo) {
+      // 如果是地址，直接導航到該地址
+      navigationUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(order.favoriteInfo)}`;
+    }
+
+    if (navigationUrl) {
+      // 開啟Google地圖
+      window.open(navigationUrl, '_blank');
+    } else {
+      // 如果沒有可用的位置資訊，則使用原有的函數
+      onNavigate(order.id);
+    }
   };
 
   const handleCompleteClick = () => {
@@ -129,7 +154,7 @@ const AcceptedOrderCard = ({ order, onNavigate, onCancel, onComplete, onArrive }
 
             <div className="grid grid-cols-2 gap-2 pt-3">
               <Button 
-                onClick={() => onNavigate(order.id)}
+                onClick={handleNavigateClick}
                 className="bg-green-600 hover:bg-green-700 text-white"
               >
                 <Navigation className="h-4 w-4 mr-2" />
