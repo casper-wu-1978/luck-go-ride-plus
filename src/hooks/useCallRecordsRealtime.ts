@@ -19,8 +19,8 @@ export const useCallRecordsRealtime = ({ lineUserId, onRecordUpdate }: UseCallRe
 
     console.log('🔥 商家端 - 設置實時監聽器:', lineUserId);
     
-    // 使用唯一的頻道名稱
-    const channelName = `merchant_updates_${lineUserId.slice(-8)}`;
+    // 使用更簡單的頻道名稱
+    const channelName = `call_records_${Date.now()}`;
     
     const channel = supabase
       .channel(channelName)
@@ -69,6 +69,13 @@ export const useCallRecordsRealtime = ({ lineUserId, onRecordUpdate }: UseCallRe
         }
         if (status === 'SUBSCRIBED') {
           console.log('🔥 商家實時監聽已成功訂閱');
+        }
+        if (status === 'TIMED_OUT') {
+          console.log('🔥 商家實時監聽超時，嘗試重新連接');
+          // 超時後重新訂閱
+          setTimeout(() => {
+            channel.subscribe();
+          }, 1000);
         }
       });
 

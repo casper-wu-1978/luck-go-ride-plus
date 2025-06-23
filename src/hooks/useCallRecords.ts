@@ -85,7 +85,8 @@ export const useCallRecords = (lineUserId?: string) => {
         console.log('🔥 商家端 - 更新前記錄:', oldRecord);
         console.log('🔥 商家端 - 更新後記錄:', updatedRecords[existingIndex]);
         
-        return updatedRecords;
+        // 強制重新渲染
+        return [...updatedRecords];
       } else {
         // 新記錄
         console.log('🔥 商家端 - 創建新記錄');
