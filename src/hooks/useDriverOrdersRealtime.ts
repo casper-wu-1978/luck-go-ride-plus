@@ -29,7 +29,7 @@ export const useDriverOrdersRealtime = ({ onOrderUpdate }: UseDriverOrdersRealti
 
     // 清理現有連接
     if (channelRef.current) {
-      console.log('📞 司機端 - 清理現有實時監聽器');
+      console.log('🧹 司機端 - 清理現有實時監聽器');
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
       isSubscribedRef.current = false;
@@ -62,12 +62,21 @@ export const useDriverOrdersRealtime = ({ onOrderUpdate }: UseDriverOrdersRealti
           if (payload.eventType === 'INSERT' && 
               payload.new?.status === 'waiting') {
             
-            console.log('🚗 新的待接訂單:', payload.new);
+            console.log('🚗🔔 發現新的待接訂單:', payload.new);
+            
+            const location = payload.new.favorite_type === 'code' ? 
+              `代碼: ${payload.new.favorite_info}` : 
+              payload.new.favorite_type === 'address' ? 
+              `地址: ${payload.new.favorite_info}` : '現在位置';
+            
             toast({
-              title: "新的待接訂單！",
-              description: `${payload.new.car_type_label} - 請查看訂單列表`,
-              duration: 8000,
+              title: "🚕 新的待接訂單！",
+              description: `${payload.new.car_type_label} - ${location}`,
+              duration: 10000,
             });
+            
+            // 發送 LINE 通知給司機
+            sendNewOrderNotification(payload.new);
             onOrderUpdate();
           }
           
@@ -77,7 +86,7 @@ export const useDriverOrdersRealtime = ({ onOrderUpdate }: UseDriverOrdersRealti
               payload.new?.status === 'matched' &&
               payload.new?.driver_id !== profile.userId) {
             
-            console.log('🚗 訂單被其他司機接走:', payload.new);
+            console.log('🚗💔 訂單被其他司機接走:', payload.new);
             onOrderUpdate();
           }
           
@@ -85,7 +94,7 @@ export const useDriverOrdersRealtime = ({ onOrderUpdate }: UseDriverOrdersRealti
           if (payload.eventType === 'UPDATE' && 
               payload.new?.driver_id === profile.userId) {
             
-            console.log('🚗 司機訂單狀態更新:', payload.new);
+            console.log('🚗📝 司機訂單狀態更新:', payload.new);
             onOrderUpdate();
           }
         }
@@ -117,6 +126,36 @@ export const useDriverOrdersRealtime = ({ onOrderUpdate }: UseDriverOrdersRealti
       }
     };
   }, [profile?.userId, onOrderUpdate, toast]);
+
+  const sendNewOrderNotification = async (orderData: any) => {
+    if (!profile?.userId) return;
+
+    try {
+      const location = orderData.favorite_type === 'code' ? 
+        `代碼: ${orderData.favorite_info}` : 
+        orderData.favorite_type === 'address' ? 
+        `地址: ${orderData.favorite_info}` : '現在位置';
+
+      const message = `🚕 新訂單通知！\n\n車型：${orderData.car_type_label}\n上車位置：${location}\n\n請儘快查看並接單！`;
+
+      console.log('📤 發送新訂單LINE通知給司機:', profile.userId);
+
+      const { data, error } = await supabase.functions.invoke('send-line-notification', {
+        body: {
+          userId: profile.userId,
+          message: message
+        }
+      });
+
+      if (error) {
+        console.error('❌ 發送新訂單通知失敗:', error);
+      } else {
+        console.log('✅ 新訂單通知發送成功:', data);
+      }
+    } catch (error) {
+      console.error('❌ 發送新訂單通知異常:', error);
+    }
+  };
 
   return {
     isConnected: isSubscribedRef.current
