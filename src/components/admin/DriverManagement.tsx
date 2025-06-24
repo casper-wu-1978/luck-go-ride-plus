@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Car, Search, Phone, Calendar, AlertCircle } from 'lucide-react';
+import { Car, Search, Phone, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface DriverProfile {
@@ -33,7 +33,6 @@ const DriverManagement = () => {
   const [filteredDrivers, setFilteredDrivers] = useState<DriverProfile[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [debugInfo, setDebugInfo] = useState<string>('');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -52,45 +51,27 @@ const DriverManagement = () => {
   const loadDrivers = async () => {
     try {
       console.log('開始載入司機資料...');
-      setDebugInfo('開始載入司機資料...');
       
-      // 檢查當前用戶
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      console.log('當前用戶:', user);
-      setDebugInfo(prev => prev + `\n當前用戶: ${user?.email || '未登入'}`);
-      
-      if (userError) {
-        console.error('用戶驗證錯誤:', userError);
-        setDebugInfo(prev => prev + `\n用戶驗證錯誤: ${userError.message}`);
-      }
-
-      // 嘗試載入司機資料
-      const { data, error, count } = await supabase
+      const { data, error } = await supabase
         .from('driver_profiles')
-        .select('*', { count: 'exact' })
+        .select('*')
         .order('created_at', { ascending: false });
 
-      console.log('Supabase 查詢結果:', { data, error, count });
-      setDebugInfo(prev => prev + `\nSupabase 查詢結果 - 資料: ${data?.length || 0} 筆, 錯誤: ${error?.message || '無'}, 總數: ${count}`);
+      console.log('Supabase 查詢結果:', { data, error });
 
       if (error) {
         console.error('載入司機資料錯誤:', error);
-        setDebugInfo(prev => prev + `\n載入錯誤: ${error.message}`);
         throw error;
       }
 
       if (data) {
-        console.log('設定司機資料到狀態中...', data);
+        console.log('成功載入司機資料:', data.length, '筆');
         setDrivers(data);
-        setDebugInfo(prev => prev + `\n成功載入 ${data.length} 筆司機資料`);
       } else {
-        console.log('沒有司機資料');
         setDrivers([]);
-        setDebugInfo(prev => prev + '\n沒有司機資料');
       }
     } catch (error) {
       console.error('載入司機資料錯誤:', error);
-      setDebugInfo(prev => prev + `\n捕獲錯誤: ${error}`);
       toast({
         title: "載入失敗",
         description: "無法載入司機資料",
@@ -188,21 +169,6 @@ const DriverManagement = () => {
         </div>
         <Badge variant="secondary">{drivers.length} 位司機</Badge>
       </div>
-
-      {/* 調試資訊卡片 */}
-      <Card className="border-orange-200 bg-orange-50">
-        <CardHeader>
-          <CardTitle className="flex items-center text-orange-800">
-            <AlertCircle className="h-5 w-5 mr-2" />
-            調試資訊
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <pre className="whitespace-pre-wrap text-sm text-orange-700 font-mono">
-            {debugInfo}
-          </pre>
-        </CardContent>
-      </Card>
 
       {/* 搜尋框 */}
       <Card>
