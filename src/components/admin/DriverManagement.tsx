@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Car, Search, Phone, Mail, Star, Calendar, User } from 'lucide-react';
+import { Car, Search, Phone, Mail, Star, Calendar, User, IdCard } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface DriverProfile {
@@ -25,6 +25,7 @@ interface DriverProfile {
   rating: number | null;
   join_date: string;
   created_at: string;
+  updated_at: string;
 }
 
 const DriverManagement = () => {
@@ -42,7 +43,8 @@ const DriverManagement = () => {
     const filtered = drivers.filter(driver =>
       driver.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (driver.phone && driver.phone.includes(searchTerm)) ||
-      (driver.plate_number && driver.plate_number.toLowerCase().includes(searchTerm.toLowerCase()))
+      (driver.plate_number && driver.plate_number.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (driver.driver_id && driver.driver_id.toLowerCase().includes(searchTerm.toLowerCase()))
     );
     setFilteredDrivers(filtered);
   }, [drivers, searchTerm]);
@@ -58,6 +60,7 @@ const DriverManagement = () => {
         throw error;
       }
 
+      console.log('載入的司機資料:', data);
       setDrivers(data || []);
     } catch (error) {
       console.error('載入司機資料錯誤:', error);
@@ -75,7 +78,10 @@ const DriverManagement = () => {
     try {
       const { error } = await supabase
         .from('driver_profiles')
-        .update({ status: newStatus })
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', driverId);
 
       if (error) {
@@ -85,7 +91,7 @@ const DriverManagement = () => {
       setDrivers(prev => 
         prev.map(driver => 
           driver.id === driverId 
-            ? { ...driver, status: newStatus }
+            ? { ...driver, status: newStatus, updated_at: new Date().toISOString() }
             : driver
         )
       );
@@ -104,24 +110,24 @@ const DriverManagement = () => {
     }
   };
 
-  const getStatusLabel = (status: string) => {
+  const getStatusLabel = (status: string | null) => {
     switch (status) {
       case 'online': return '上線';
       case 'offline': return '離線';
       case 'busy': return '忙碌';
       case 'suspended': return '停權';
-      default: return '未知';
+      default: return '離線';
     }
   };
 
   const getStatusBadge = (status: string | null) => {
     switch (status) {
       case 'online':
-        return <Badge variant="default" className="bg-green-100 text-green-800">上線</Badge>;
+        return <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">上線</Badge>;
       case 'offline':
-        return <Badge variant="secondary">離線</Badge>;
+        return <Badge variant="secondary" className="bg-gray-100 text-gray-800">離線</Badge>;
       case 'busy':
-        return <Badge variant="default" className="bg-yellow-100 text-yellow-800">忙碌</Badge>;
+        return <Badge variant="default" className="bg-yellow-100 text-yellow-800 border-yellow-200">忙碌</Badge>;
       case 'suspended':
         return <Badge variant="destructive">停權</Badge>;
       default:
@@ -130,13 +136,21 @@ const DriverManagement = () => {
   };
 
   const getRatingStars = (rating: number | null) => {
-    if (!rating) return '未評分';
+    if (!rating) return <span className="text-gray-400 text-sm">未評分</span>;
     return (
       <div className="flex items-center">
         <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-        <span className="ml-1 text-sm">{rating.toFixed(1)}</span>
+        <span className="ml-1 text-sm font-medium">{rating.toFixed(1)}</span>
       </div>
     );
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('zh-TW', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
   };
 
   if (isLoading) {
@@ -163,7 +177,7 @@ const DriverManagement = () => {
           <div className="relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="搜尋司機姓名、電話或車牌號碼..."
+              placeholder="搜尋司機姓名、電話、車牌號碼或司機ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -175,100 +189,149 @@ const DriverManagement = () => {
       {/* 司機列表 */}
       <Card>
         <CardHeader>
-          <CardTitle>司機列表</CardTitle>
+          <CardTitle>司機列表 ({filteredDrivers.length})</CardTitle>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>司機資訊</TableHead>
-                <TableHead>聯絡方式</TableHead>
-                <TableHead>車輛資訊</TableHead>
-                <TableHead>評分</TableHead>
-                <TableHead>狀態</TableHead>
-                <TableHead>加入時間</TableHead>
-                <TableHead>操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredDrivers.map((driver) => (
-                <TableRow key={driver.id}>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center space-x-2">
-                      <User className="h-4 w-4 text-gray-400" />
-                      <div>
-                        <p className="font-semibold">{driver.name}</p>
-                        {driver.license_number && (
-                          <p className="text-sm text-gray-500">駕照: {driver.license_number}</p>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="min-w-[200px]">司機資訊</TableHead>
+                  <TableHead className="min-w-[150px]">聯絡方式</TableHead>
+                  <TableHead className="min-w-[200px]">車輛資訊</TableHead>
+                  <TableHead>評分</TableHead>
+                  <TableHead>狀態</TableHead>
+                  <TableHead>加入時間</TableHead>
+                  <TableHead className="min-w-[120px]">操作</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredDrivers.map((driver) => (
+                  <TableRow key={driver.id}>
+                    <TableCell>
+                      <div className="flex items-start space-x-3">
+                        <User className="h-5 w-5 text-gray-400 mt-1 flex-shrink-0" />
+                        <div className="min-h-0">
+                          <p className="font-semibold text-gray-900">{driver.name}</p>
+                          <div className="space-y-1 text-sm text-gray-500">
+                            <div className="flex items-center">
+                              <IdCard className="h-3 w-3 mr-1" />
+                              司機ID: {driver.driver_id}
+                            </div>
+                            {driver.license_number && (
+                              <div>駕照: {driver.license_number}</div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-2">
+                        {driver.phone ? (
+                          <div className="flex items-center text-sm">
+                            <Phone className="h-3 w-3 mr-2 text-green-600" />
+                            <span>{driver.phone}</span>
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-400">未提供電話</div>
+                        )}
+                        {driver.email ? (
+                          <div className="flex items-center text-sm">
+                            <Mail className="h-3 w-3 mr-2 text-blue-600" />
+                            <span className="truncate max-w-[120px]" title={driver.email}>
+                              {driver.email}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-400">未提供信箱</div>
                         )}
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      {driver.phone && (
-                        <div className="flex items-center text-sm">
-                          <Phone className="h-3 w-3 mr-1" />
-                          {driver.phone}
-                        </div>
-                      )}
-                      {driver.email && (
-                        <div className="flex items-center text-sm">
-                          <Mail className="h-3 w-3 mr-1" />
-                          {driver.email}
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      {driver.vehicle_brand && (
-                        <p className="text-sm">
-                          {driver.vehicle_brand} {driver.vehicle_color && `(${driver.vehicle_color})`}
-                        </p>
-                      )}
-                      {driver.plate_number && (
-                        <p className="text-sm font-mono bg-gray-100 px-2 py-1 rounded text-center">
-                          {driver.plate_number}
-                        </p>
-                      )}
-                      {driver.vehicle_type && (
-                        <p className="text-xs text-gray-500">{driver.vehicle_type}</p>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>{getRatingStars(driver.rating)}</TableCell>
-                  <TableCell>{getStatusBadge(driver.status)}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center text-sm">
-                      <Calendar className="h-3 w-3 mr-1" />
-                      {new Date(driver.join_date).toLocaleDateString('zh-TW')}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="space-x-2">
-                      {driver.status === 'suspended' ? (
-                        <Button
-                          size="sm"
-                          onClick={() => updateDriverStatus(driver.id, 'offline')}
-                        >
-                          恢復
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => updateDriverStatus(driver.id, 'suspended')}
-                        >
-                          停權
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-2">
+                        {driver.vehicle_brand || driver.vehicle_color ? (
+                          <div className="text-sm">
+                            <span className="font-medium">
+                              {driver.vehicle_brand || '未知品牌'}
+                            </span>
+                            {driver.vehicle_color && (
+                              <span className="text-gray-600 ml-1">({driver.vehicle_color})</span>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-400">未提供車輛品牌</div>
+                        )}
+                        
+                        {driver.plate_number ? (
+                          <div className="inline-block bg-blue-50 border border-blue-200 px-2 py-1 rounded text-sm font-mono">
+                            {driver.plate_number}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-400">未提供車牌</div>
+                        )}
+                        
+                        {driver.vehicle_type && (
+                          <div className="text-xs bg-gray-100 px-2 py-1 rounded inline-block">
+                            {driver.vehicle_type}
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>{getRatingStars(driver.rating)}</TableCell>
+                    <TableCell>{getStatusBadge(driver.status)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center text-sm text-gray-600">
+                        <Calendar className="h-3 w-3 mr-1" />
+                        {formatDate(driver.join_date)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col space-y-1">
+                        {driver.status === 'suspended' ? (
+                          <Button
+                            size="sm"
+                            onClick={() => updateDriverStatus(driver.id, 'offline')}
+                            className="text-xs"
+                          >
+                            恢復
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => updateDriverStatus(driver.id, 'suspended')}
+                            className="text-xs"
+                          >
+                            停權
+                          </Button>
+                        )}
+                        {driver.status !== 'online' && driver.status !== 'suspended' && (
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => updateDriverStatus(driver.id, 'online')}
+                            className="text-xs bg-green-600 hover:bg-green-700"
+                          >
+                            上線
+                          </Button>
+                        )}
+                        {driver.status === 'online' && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => updateDriverStatus(driver.id, 'offline')}
+                            className="text-xs"
+                          >
+                            下線
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
           {filteredDrivers.length === 0 && (
             <div className="text-center py-8 text-gray-500">
               {searchTerm ? '沒有找到符合條件的司機' : '暫無司機資料'}
