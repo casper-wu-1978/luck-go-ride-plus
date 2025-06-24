@@ -23,11 +23,6 @@ const OnlineDriversStatus = ({ onlineDriversCount, onRefresh }: OnlineDriversSta
           重新整理
         </button>
       </div>
-      {onlineDriversCount === 0 && (
-        <p className="text-xs text-red-600 mt-1">
-          目前沒有線上司機，請稍後再試
-        </p>
-      )}
     </div>
   );
 };
