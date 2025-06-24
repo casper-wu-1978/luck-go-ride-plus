@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -208,19 +207,6 @@ const DriverManagement = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
             />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 調試資訊 */}
-      <Card className="bg-blue-50 border-blue-200">
-        <CardContent className="p-4">
-          <h3 className="font-semibold text-blue-800 mb-2">調試資訊</h3>
-          <div className="text-sm text-blue-700 space-y-1">
-            <p>載入狀態: {isLoading ? '載入中' : '已完成'}</p>
-            <p>原始司機數量: {drivers.length}</p>
-            <p>過濾後司機數量: {filteredDrivers.length}</p>
-            <p>搜尋條件: "{searchTerm}"</p>
           </div>
         </CardContent>
       </Card>
