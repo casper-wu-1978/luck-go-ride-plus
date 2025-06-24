@@ -25,20 +25,7 @@ export const merchantOrderService = {
       return [];
     }
 
-    // 獲取所有有司機的訂單的司機資料
-    const driverIds = [...new Set(orders.filter(order => order.driver_id).map(order => order.driver_id))];
-    let driverMap = new Map();
-    
-    if (driverIds.length > 0) {
-      const { data: driversData } = await supabase
-        .from('driver_profiles')
-        .select('driver_id, name, phone, plate_number, vehicle_brand, vehicle_color')
-        .in('driver_id', driverIds);
-
-      driversData?.forEach(driver => {
-        driverMap.set(driver.driver_id, driver);
-      });
-    }
+    console.log('原始訂單資料:', orders);
 
     // 獲取商家資料
     const { data: merchantData } = await supabase
@@ -47,10 +34,16 @@ export const merchantOrderService = {
       .eq('line_user_id', merchantLineUserId)
       .single();
 
-    // 組合訂單和司機資料
+    // 組合訂單和司機資料 - 直接使用 call_records 表中的司機資料
     const ordersWithData = orders.map(order => {
-      const driverData = order.driver_id ? driverMap.get(order.driver_id) : null;
-      
+      console.log('處理訂單:', order.id, '司機資料:', {
+        driver_name: order.driver_name,
+        driver_phone: order.driver_phone,
+        driver_plate_number: order.driver_plate_number,
+        driver_car_brand: order.driver_car_brand,
+        driver_car_color: order.driver_car_color
+      });
+
       return {
         id: order.id,
         carType: order.car_type,
@@ -65,15 +58,17 @@ export const merchantOrderService = {
           phone: merchantData.phone,
           businessAddress: merchantData.business_address
         } : undefined,
-        driverInfo: driverData ? {
-          name: driverData.name,
-          phone: driverData.phone || '',
-          plateNumber: driverData.plate_number || '',
-          carBrand: driverData.vehicle_brand || '',
-          carColor: driverData.vehicle_color || ''
+        driverInfo: order.driver_name ? {
+          name: order.driver_name,
+          phone: order.driver_phone || '',
+          plateNumber: order.driver_plate_number || '',
+          carBrand: order.driver_car_brand || '',
+          carColor: order.driver_car_color || ''
         } : undefined
       };
     });
+
+    console.log('處理後的訂單資料:', ordersWithData);
 
     const loadTime = Date.now() - startTime;
     console.log(`商家訂單載入完成，耗時: ${loadTime}ms，共 ${ordersWithData.length} 筆`);

@@ -9,6 +9,8 @@ interface MerchantAcceptedOrderCardProps {
 }
 
 const MerchantAcceptedOrderCard = ({ order }: MerchantAcceptedOrderCardProps) => {
+  console.log('MerchantAcceptedOrderCard 渲染:', order.id, '司機資料:', order.driverInfo);
+
   const getStatusBadge = () => {
     switch (order.status) {
       case 'matched':
@@ -55,9 +57,9 @@ const MerchantAcceptedOrderCard = ({ order }: MerchantAcceptedOrderCardProps) =>
             {getLocationDisplay()}
           </div>
 
-          {/* 司機資訊 */}
+          {/* 司機資訊 - 確保始終顯示當有司機資料時 */}
           {order.driverInfo && (
-            <div className="bg-green-50 p-3 rounded-lg space-y-2">
+            <div className="bg-green-50 p-3 rounded-lg space-y-2" key={`driver-${order.id}`}>
               <div className="text-sm font-medium text-green-800 mb-2">司機資訊</div>
               <div className="flex items-center text-sm text-green-700">
                 <User className="h-4 w-4 mr-2" />
