@@ -4,6 +4,7 @@ import { useLiff } from '@/contexts/LiffContext';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useLocation } from 'react-router-dom';
 import { isDevMode } from '@/lib/liff';
+import { useAdminAuth } from '@/contexts/AdminAuthContext';
 import AuthPage from './AuthPage';
 
 interface AuthWrapperProps {
@@ -13,6 +14,7 @@ interface AuthWrapperProps {
 const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
   const { profile, isLoading, isLiffReady } = useLiff();
   const { userRole } = useUserRole();
+  const { user: adminUser, isLoading: adminLoading } = useAdminAuth();
   const location = useLocation();
   const [showDevInfo, setShowDevInfo] = useState(false);
 
@@ -26,8 +28,25 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
     setShowDevInfo(isDevelopment);
   }, [isDevelopment]);
 
-  // 如果是管理員路由，直接返回 AuthPage 或 children
+  // 如果是管理員路由，處理管理員認證
   if (isAdminRoute) {
+    if (adminLoading) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+            <p className="text-purple-800 text-lg">載入管理系統...</p>
+          </div>
+        </div>
+      );
+    }
+
+    // 如果管理員已登入，顯示管理頁面內容
+    if (adminUser) {
+      return <>{children}</>;
+    }
+
+    // 如果管理員未登入，顯示登入頁面
     return <AuthPage />;
   }
 
