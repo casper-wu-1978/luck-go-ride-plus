@@ -1,5 +1,3 @@
-
-
 import { supabase } from "@/integrations/supabase/client";
 import type { CallRecord, OrderCompletionData } from "@/types/driverOrders";
 
@@ -19,27 +17,53 @@ export const driverOrderService = {
       return [];
     }
 
-    const ordersWithData = (orders || []).map(order => ({
-      id: order.id,
-      carType: order.car_type,
-      carTypeLabel: order.car_type_label,
-      status: order.status as 'waiting' | 'matched' | 'arrived' | 'in_progress' | 'completed' | 'failed' | 'cancelled',
-      timestamp: new Date(order.created_at),
-      favoriteType: order.favorite_type,
-      favoriteInfo: order.favorite_info || undefined,
-      driverInfo: order.driver_name ? {
-        name: order.driver_name,
-        phone: order.driver_phone || '',
-        plateNumber: order.driver_plate_number || '',
-        carBrand: order.driver_car_brand || '',
-        carColor: order.driver_car_color || ''
-      } : undefined
-    }));
+    // 載入商家資訊
+    const ordersWithMerchantInfo = await Promise.all(
+      (orders || []).map(async (order) => {
+        let merchantInfo = undefined;
+        
+        // 根據 line_user_id 載入商家資訊
+        if (order.line_user_id) {
+          const { data: merchantData } = await supabase
+            .from('merchant_profiles')
+            .select('business_name, contact_name, phone, business_address')
+            .eq('line_user_id', order.line_user_id)
+            .single();
+          
+          if (merchantData) {
+            merchantInfo = {
+              businessName: merchantData.business_name,
+              contactName: merchantData.contact_name,
+              phone: merchantData.phone,
+              businessAddress: merchantData.business_address
+            };
+          }
+        }
+
+        return {
+          id: order.id,
+          carType: order.car_type,
+          carTypeLabel: order.car_type_label,
+          status: order.status as 'waiting' | 'matched' | 'arrived' | 'in_progress' | 'completed' | 'failed' | 'cancelled',
+          timestamp: new Date(order.created_at),
+          favoriteType: order.favorite_type,
+          favoriteInfo: order.favorite_info || undefined,
+          merchantInfo,
+          driverInfo: order.driver_name ? {
+            name: order.driver_name,
+            phone: order.driver_phone || '',
+            plateNumber: order.driver_plate_number || '',
+            carBrand: order.driver_car_brand || '',
+            carColor: order.driver_car_color || ''
+          } : undefined
+        };
+      })
+    );
 
     const loadTime = Date.now() - startTime;
-    console.log(`司機訂單載入完成，耗時: ${loadTime}ms，共 ${ordersWithData.length} 筆`);
+    console.log(`司機訂單載入完成，耗時: ${loadTime}ms，共 ${ordersWithMerchantInfo.length} 筆`);
     
-    return ordersWithData;
+    return ordersWithMerchantInfo;
   },
 
   async loadWaitingOrders(): Promise<CallRecord[]> {
@@ -62,22 +86,50 @@ export const driverOrderService = {
       return [];
     }
 
-    return (orders || []).map(order => ({
-      id: order.id,
-      carType: order.car_type,
-      carTypeLabel: order.car_type_label,
-      status: order.status as 'waiting' | 'matched' | 'arrived' | 'in_progress' | 'completed' | 'failed' | 'cancelled',
-      timestamp: new Date(order.created_at),
-      favoriteType: order.favorite_type,
-      favoriteInfo: order.favorite_info || undefined,
-      driverInfo: order.driver_name ? {
-        name: order.driver_name,
-        phone: order.driver_phone || '',
-        plateNumber: order.driver_plate_number || '',
-        carBrand: order.driver_car_brand || '',
-        carColor: order.driver_car_color || ''
-      } : undefined
-    }));
+    // 載入商家資訊
+    const ordersWithMerchantInfo = await Promise.all(
+      (orders || []).map(async (order) => {
+        let merchantInfo = undefined;
+        
+        // 根據 line_user_id 載入商家資訊
+        if (order.line_user_id) {
+          const { data: merchantData } = await supabase
+            .from('merchant_profiles')
+            .select('business_name, contact_name, phone, business_address')
+            .eq('line_user_id', order.line_user_id)
+            .single();
+          
+          if (merchantData) {
+            merchantInfo = {
+              businessName: merchantData.business_name,
+              contactName: merchantData.contact_name,
+              phone: merchantData.phone,
+              businessAddress: merchantData.business_address
+            };
+          }
+        }
+
+        return {
+          id: order.id,
+          carType: order.car_type,
+          carTypeLabel: order.car_type_label,
+          status: order.status as 'waiting' | 'matched' | 'arrived' | 'in_progress' | 'completed' | 'failed' | 'cancelled',
+          timestamp: new Date(order.created_at),
+          favoriteType: order.favorite_type,
+          favoriteInfo: order.favorite_info || undefined,
+          merchantInfo,
+          driverInfo: order.driver_name ? {
+            name: order.driver_name,
+            phone: order.driver_phone || '',
+            plateNumber: order.driver_plate_number || '',
+            carBrand: order.driver_car_brand || '',
+            carColor: order.driver_car_color || ''
+          } : undefined
+        };
+      })
+    );
+
+    return ordersWithMerchantInfo;
   },
 
   async acceptOrder(orderId: string, driverId: string): Promise<void> {
@@ -329,4 +381,3 @@ export const driverOrderService = {
     console.log('訂單狀態更新成功:', { orderId, status, completionData });
   }
 };
-
