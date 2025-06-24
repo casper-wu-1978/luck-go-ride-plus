@@ -162,23 +162,14 @@ export const useDriverOrderActions = (onOrdersChanged: () => void) => {
     try {
       console.log('取消訂單:', orderId);
       
-      // 先通過 driverOrderService 取消訂單
+      // 先通過 driverOrderService 取消訂單（會將狀態改回 waiting）
       await driverOrderService.cancelOrder(orderId, profile.userId);
       
-      // 取得商家的 line_user_id 並發送通知
-      const { data: orderData } = await supabase
-        .from('call_records')
-        .select('line_user_id')
-        .eq('id', orderId)
-        .single();
-
-      if (orderData) {
-        await updateCallRecord(orderId, 'cancelled', undefined, orderData.line_user_id);
-      }
-
+      // 不發送 LINE 通知，因為訂單回到待媒合狀態，讓其他司機可以接單
+      
       toast({
         title: "已取消訂單",
-        description: "訂單已成功取消",
+        description: "訂單已重新開放給其他司機接單",
       });
       onOrdersChanged();
     } catch (error) {

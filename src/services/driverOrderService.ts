@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import type { CallRecord, OrderCompletionData } from "@/types/driverOrders";
 
@@ -263,12 +264,18 @@ export const driverOrderService = {
   },
 
   async cancelOrder(orderId: string, driverId: string) {
+    // 將訂單狀態改回 waiting 並清除司機資訊，讓其他司機可以接單
     const { error } = await supabase
       .from('call_records')
       .update({
-        status: 'cancelled',
+        status: 'waiting',
         driver_id: null,
-        accepted_at: null
+        accepted_at: null,
+        driver_name: null,
+        driver_phone: null,
+        driver_plate_number: null,
+        driver_car_brand: null,
+        driver_car_color: null
       })
       .eq('id', orderId)
       .eq('driver_id', driverId);
