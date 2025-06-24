@@ -43,9 +43,9 @@ const AcceptedOrderCard = ({ order, onNavigate, onCancel, onComplete, onArrive }
   const getStatusBadge = () => {
     switch (order.status) {
       case 'matched':
-        return <Badge className="bg-blue-500">司機已接單</Badge>;
+        return <Badge className="bg-blue-500">已接單 - 前往中</Badge>;
       case 'arrived':
-        return <Badge className="bg-green-500">司機已抵達</Badge>;
+        return <Badge className="bg-green-500">已抵達</Badge>;
       case 'in_progress':
         return <Badge className="bg-orange-500">行程進行中</Badge>;
       default:
@@ -83,6 +83,12 @@ const AcceptedOrderCard = ({ order, onNavigate, onCancel, onComplete, onArrive }
             >
               <Navigation className="h-4 w-4 mr-2" />
               導航
+            </Button>
+            <Button 
+              onClick={() => onArrive && onArrive(order.id)}
+              className="bg-green-600 hover:bg-green-700 text-white flex-1"
+            >
+              已抵達
             </Button>
             <Button 
               variant="outline" 
@@ -128,6 +134,37 @@ const AcceptedOrderCard = ({ order, onNavigate, onCancel, onComplete, onArrive }
     }
   };
 
+  const getStatusMessage = () => {
+    switch (order.status) {
+      case 'matched':
+        return (
+          <div className="bg-blue-50 p-3 rounded-lg">
+            <p className="text-sm text-blue-800">
+              請前往接客地點，抵達後點擊「已抵達」按鈕
+            </p>
+          </div>
+        );
+      case 'arrived':
+        return (
+          <div className="bg-green-50 p-3 rounded-lg">
+            <p className="text-sm text-green-800">
+              已抵達接客地點，等待乘客上車後點擊「開始行程」
+            </p>
+          </div>
+        );
+      case 'in_progress':
+        return (
+          <div className="bg-orange-50 p-3 rounded-lg">
+            <p className="text-sm text-orange-800">
+              行程進行中，抵達目的地後點擊「完成行程」
+            </p>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <Card className="hover:shadow-lg transition-shadow">
       <CardHeader>
@@ -166,14 +203,7 @@ const AcceptedOrderCard = ({ order, onNavigate, onCancel, onComplete, onArrive }
             {getLocationDisplay()}
           </div>
 
-          {order.status !== 'completed' && (
-            <div className="bg-blue-50 p-3 rounded-lg">
-              <p className="text-sm text-blue-800">
-                司機正在前往您的位置，請耐心等候
-              </p>
-            </div>
-          )}
-
+          {getStatusMessage()}
           {getActionButtons()}
         </div>
       </CardContent>
