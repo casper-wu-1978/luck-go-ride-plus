@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -5,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Car, Search, Phone, Mail, Star, Calendar, User, IdCard } from 'lucide-react';
+import { Car, Search, Phone, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface DriverProfile {
@@ -45,8 +46,7 @@ const DriverManagement = () => {
     const filtered = drivers.filter(driver =>
       driver.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (driver.phone && driver.phone.includes(searchTerm)) ||
-      (driver.plate_number && driver.plate_number.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (driver.driver_id && driver.driver_id.toLowerCase().includes(searchTerm.toLowerCase()))
+      (driver.line_user_id && driver.line_user_id.toLowerCase().includes(searchTerm.toLowerCase()))
     );
     console.log('過濾後的司機資料:', filtered);
     setFilteredDrivers(filtered);
@@ -154,16 +154,6 @@ const DriverManagement = () => {
     }
   };
 
-  const getRatingStars = (rating: number | null) => {
-    if (!rating) return <span className="text-gray-400 text-sm">未評分</span>;
-    return (
-      <div className="flex items-center">
-        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-        <span className="ml-1 text-sm font-medium">{rating.toFixed(1)}</span>
-      </div>
-    );
-  };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('zh-TW', {
       year: 'numeric',
@@ -202,7 +192,7 @@ const DriverManagement = () => {
           <div className="relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="搜尋司機姓名、電話、車牌號碼或司機ID..."
+              placeholder="搜尋司機姓名、電話或LINE ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -221,10 +211,9 @@ const DriverManagement = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[200px]">司機資訊</TableHead>
-                  <TableHead className="min-w-[150px]">聯絡方式</TableHead>
-                  <TableHead className="min-w-[200px]">車輛資訊</TableHead>
-                  <TableHead>評分</TableHead>
+                  <TableHead>LINE ID</TableHead>
+                  <TableHead>名稱</TableHead>
+                  <TableHead>聯絡方式</TableHead>
                   <TableHead>狀態</TableHead>
                   <TableHead>加入時間</TableHead>
                   <TableHead className="min-w-[120px]">操作</TableHead>
@@ -235,75 +224,23 @@ const DriverManagement = () => {
                   filteredDrivers.map((driver) => (
                     <TableRow key={driver.id}>
                       <TableCell>
-                        <div className="flex items-start space-x-3">
-                          <User className="h-5 w-5 text-gray-400 mt-1 flex-shrink-0" />
-                          <div className="min-h-0">
-                            <p className="font-semibold text-gray-900">{driver.name}</p>
-                            <div className="space-y-1 text-sm text-gray-500">
-                              <div className="flex items-center">
-                                <IdCard className="h-3 w-3 mr-1" />
-                                司機ID: {driver.driver_id}
-                              </div>
-                              {driver.license_number && (
-                                <div>駕照: {driver.license_number}</div>
-                              )}
-                            </div>
+                        <div className="font-mono text-sm text-gray-600">
+                          {driver.line_user_id || '未提供'}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-semibold text-gray-900">{driver.name}</div>
+                      </TableCell>
+                      <TableCell>
+                        {driver.phone ? (
+                          <div className="flex items-center text-sm">
+                            <Phone className="h-3 w-3 mr-2 text-green-600" />
+                            <span>{driver.phone}</span>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="text-sm text-gray-400">未提供電話</div>
+                        )}
                       </TableCell>
-                      <TableCell>
-                        <div className="space-y-2">
-                          {driver.phone ? (
-                            <div className="flex items-center text-sm">
-                              <Phone className="h-3 w-3 mr-2 text-green-600" />
-                              <span>{driver.phone}</span>
-                            </div>
-                          ) : (
-                            <div className="text-sm text-gray-400">未提供電話</div>
-                          )}
-                          {driver.email ? (
-                            <div className="flex items-center text-sm">
-                              <Mail className="h-3 w-3 mr-2 text-blue-600" />
-                              <span className="truncate max-w-[120px]" title={driver.email}>
-                                {driver.email}
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="text-sm text-gray-400">未提供信箱</div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-2">
-                          {driver.vehicle_brand || driver.vehicle_color ? (
-                            <div className="text-sm">
-                              <span className="font-medium">
-                                {driver.vehicle_brand || '未知品牌'}
-                              </span>
-                              {driver.vehicle_color && (
-                                <span className="text-gray-600 ml-1">({driver.vehicle_color})</span>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="text-sm text-gray-400">未提供車輛品牌</div>
-                          )}
-                          
-                          {driver.plate_number ? (
-                            <div className="inline-block bg-blue-50 border border-blue-200 px-2 py-1 rounded text-sm font-mono">
-                              {driver.plate_number}
-                            </div>
-                          ) : (
-                            <div className="text-sm text-gray-400">未提供車牌</div>
-                          )}
-                          
-                          {driver.vehicle_type && (
-                            <div className="text-xs bg-gray-100 px-2 py-1 rounded inline-block">
-                              {driver.vehicle_type}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>{getRatingStars(driver.rating)}</TableCell>
                       <TableCell>{getStatusBadge(driver.status)}</TableCell>
                       <TableCell>
                         <div className="flex items-center text-sm text-gray-600">
@@ -357,7 +294,7 @@ const DriverManagement = () => {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                       {searchTerm ? '沒有找到符合條件的司機' : '暫無司機資料'}
                     </TableCell>
                   </TableRow>
