@@ -82,29 +82,69 @@ export const useDriverStatus = () => {
 
     setIsGettingLocation(true);
     try {
+      // 檢查瀏覽器是否支援定位
+      if (!navigator.geolocation) {
+        throw new Error('瀏覽器不支援定位功能');
+      }
+
+      console.log('🗺️ 開始獲取位置...');
+      
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 600000
-        });
+        navigator.geolocation.getCurrentPosition(
+          resolve,
+          (error) => {
+            console.error('定位錯誤:', error);
+            switch(error.code) {
+              case error.PERMISSION_DENIED:
+                reject(new Error('用戶拒絕定位權限請求'));
+                break;
+              case error.POSITION_UNAVAILABLE:
+                reject(new Error('位置資訊無法獲取'));
+                break;
+              case error.TIMEOUT:
+                reject(new Error('定位請求超時'));
+                break;
+              default:
+                reject(new Error('定位發生未知錯誤'));
+                break;
+            }
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 600000
+          }
+        );
       });
 
       const { latitude, longitude } = position.coords;
+      console.log('📍 獲取到座標:', { latitude, longitude });
       
-      const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${mapboxToken}&language=zh-TW`
-      );
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.features && data.features.length > 0) {
-          setCurrentLocation(data.features[0].place_name);
+      try {
+        const response = await fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${mapboxToken}&language=zh-TW`
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.features && data.features.length > 0) {
+            const address = data.features[0].place_name;
+            setCurrentLocation(address);
+            console.log('📍 地址解析成功:', address);
+          } else {
+            const coords = `緯度: ${latitude.toFixed(6)}, 經度: ${longitude.toFixed(6)}`;
+            setCurrentLocation(coords);
+            console.log('📍 使用座標作為位置:', coords);
+          }
         } else {
-          setCurrentLocation(`緯度: ${latitude.toFixed(6)}, 經度: ${longitude.toFixed(6)}`);
+          const coords = `緯度: ${latitude.toFixed(6)}, 經度: ${longitude.toFixed(6)}`;
+          setCurrentLocation(coords);
+          console.log('📍 地址解析失敗，使用座標:', coords);
         }
-      } else {
-        setCurrentLocation(`緯度: ${latitude.toFixed(6)}, 經度: ${longitude.toFixed(6)}`);
+      } catch (geocodeError) {
+        console.error('地址解析錯誤:', geocodeError);
+        const coords = `緯度: ${latitude.toFixed(6)}, 經度: ${longitude.toFixed(6)}`;
+        setCurrentLocation(coords);
       }
 
       toast({
@@ -116,7 +156,7 @@ export const useDriverStatus = () => {
       setCurrentLocation("無法獲取位置");
       toast({
         title: "定位失敗",
-        description: "請檢查定位權限設定",
+        description: error instanceof Error ? error.message : "請檢查定位權限設定",
         variant: "destructive",
       });
     } finally {
@@ -259,7 +299,8 @@ export const useDriverStatus = () => {
             vehicle_type: '一般車輛',
             vehicle_brand: 'Toyota',
             vehicle_color: '白色',
-            plate_number: 'ABC-1234'
+            plate_number: 'ABC-1234',
+            join_date: new Date().toISOString().split('T')[0]
           });
 
         if (insertError) {
@@ -305,6 +346,8 @@ export const useDriverStatus = () => {
   const handleOnlineToggle = async (checked: boolean) => {
     try {
       if (checked) {
+        // 如果要上線，先嘗試獲取定位
+        console.log('🔄 司機準備上線，先獲取定位...');
         await getCurrentLocation();
       }
       
