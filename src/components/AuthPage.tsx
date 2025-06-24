@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useAdminAuth } from '@/contexts/AdminAuthContext';
-import { Mail, Lock, User, ArrowRight, Shield } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, Shield, AlertCircle } from 'lucide-react';
 
 const AuthPage = () => {
   const navigate = useNavigate();
@@ -36,9 +36,19 @@ const AuthPage = () => {
         const { error } = await signIn(email, password);
 
         if (error) {
+          let errorMessage = "登入失敗";
+          
+          if (error.message?.includes('Invalid login credentials')) {
+            errorMessage = "電子郵件或密碼錯誤";
+          } else if (error.message?.includes('Email not confirmed')) {
+            errorMessage = "電子郵件尚未確認，請檢查您的信箱或聯繫管理員";
+          } else {
+            errorMessage = error.message;
+          }
+
           toast({
             title: "登入失敗",
-            description: error.message,
+            description: errorMessage,
             variant: "destructive",
           });
         } else {
@@ -54,14 +64,19 @@ const AuthPage = () => {
 
         if (error) {
           toast({
-            title: "註冊失敗",
-            description: error.message,
-            variant: "destructive",
+            title: "註冊處理",
+            description: error.message || "註冊失敗，請稍後再試",
+            variant: error.message?.includes('註冊成功') ? "default" : "destructive",
           });
+          
+          // 如果註冊成功但需要確認，切換到登入模式
+          if (error.message?.includes('註冊成功')) {
+            setIsLogin(true);
+          }
         } else {
           toast({
             title: "註冊成功",
-            description: "請檢查您的電子郵件以確認帳戶",
+            description: "帳戶創建成功，正在登入...",
           });
         }
       }
@@ -192,10 +207,22 @@ const AuthPage = () => {
           </CardContent>
         </Card>
 
+        {/* Email Confirmation Notice */}
+        <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="flex items-start">
+            <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5 mr-2 flex-shrink-0" />
+            <div className="text-sm text-yellow-800">
+              <p className="font-medium mb-1">電子郵件確認說明</p>
+              <p>註冊後如需要電子郵件確認，請檢查您的信箱。如果沒有收到確認郵件，請聯繫系統管理員。</p>
+            </div>
+          </div>
+        </div>
+
         {/* Demo Info */}
-        <div className="mt-6 text-center text-sm text-purple-700">
-          <p>測試帳戶：admin@luckgo.com</p>
-          <p>密碼：123456</p>
+        <div className="mt-4 text-center text-sm text-purple-700 bg-purple-50 p-3 rounded-lg">
+          <p className="font-medium mb-1">測試帳戶</p>
+          <p>Email: admin@luckgo.com</p>
+          <p>密碼: 123456</p>
         </div>
 
         {/* Back to Main */}
