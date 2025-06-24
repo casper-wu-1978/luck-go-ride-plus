@@ -69,30 +69,32 @@ const CallRecords = ({ callRecords, userProfile, onCancelCall }: CallRecordsProp
           {callRecords.map((record) => (
             <div key={record.id} className="p-4 border rounded-lg bg-gray-50">
               <div className="flex justify-between items-start mb-3">
-                <div>
-                  <span className="font-semibold text-gray-800 text-lg">
-                    {record.carTypeLabel}
-                  </span>
-                  <span className="text-base text-gray-600 ml-3">
-                    {record.timestamp.toLocaleTimeString()}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <div className={`flex items-center space-x-2 text-base font-semibold ${getStatusColor(record.status)}`}>
-                    {getStatusIcon(record.status)}
-                    <span>{getStatusText(record.status)}</span>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-gray-800 text-lg">
+                      {record.carTypeLabel}
+                    </span>
+                    <span className="text-base text-gray-600">
+                      {record.timestamp.toLocaleTimeString()}
+                    </span>
                   </div>
-                  {record.status === 'waiting' && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => onCancelCall(record.id)}
-                      className="h-7 px-3 text-sm border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400"
-                    >
-                      <X className="h-4 w-4 mr-1" />
-                      取消
-                    </Button>
-                  )}
+                  <div className="flex items-center justify-between mt-2">
+                    <div className={`flex items-center space-x-2 text-base font-semibold ${getStatusColor(record.status)}`}>
+                      {getStatusIcon(record.status)}
+                      <span>{getStatusText(record.status)}</span>
+                    </div>
+                    {record.status === 'waiting' && (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => onCancelCall(record.id)}
+                        className="h-8 px-4 text-sm"
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        取消
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
               
