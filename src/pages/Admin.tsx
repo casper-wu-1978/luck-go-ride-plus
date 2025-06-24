@@ -4,9 +4,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Shield, Users, Car, Store, TrendingUp, LogOut } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Shield, Users, Car, Store, TrendingUp, LogOut, BarChart3 } from "lucide-react";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useToast } from "@/hooks/use-toast";
+import MerchantManagement from "@/components/admin/MerchantManagement";
+import DriverManagement from "@/components/admin/DriverManagement";
 
 interface OrderStats {
   total: number;
@@ -140,67 +143,111 @@ const Admin = () => {
           </Button>
         </div>
 
-        {/* 統計卡片 */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <Card>
-            <CardContent className="p-4 text-center">
-              <TrendingUp className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-              <p className="text-2xl font-bold text-gray-800">{stats.total}</p>
-              <p className="text-sm text-gray-600">總訂單</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Car className="h-8 w-8 text-orange-600 mx-auto mb-2" />
-              <p className="text-2xl font-bold text-gray-800">{stats.waiting}</p>
-              <p className="text-sm text-gray-600">等待中</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Users className="h-8 w-8 text-green-600 mx-auto mb-2" />
-              <p className="text-2xl font-bold text-gray-800">{stats.matched}</p>
-              <p className="text-sm text-gray-600">已媒合</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Store className="h-8 w-8 text-purple-600 mx-auto mb-2" />
-              <p className="text-2xl font-bold text-gray-800">{stats.completed}</p>
-              <p className="text-sm text-gray-600">已完成</p>
-            </CardContent>
-          </Card>
-        </div>
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="overview" className="flex items-center space-x-2">
+              <BarChart3 className="h-4 w-4" />
+              <span>總覽</span>
+            </TabsTrigger>
+            <TabsTrigger value="merchants" className="flex items-center space-x-2">
+              <Store className="h-4 w-4" />
+              <span>商家管理</span>
+            </TabsTrigger>
+            <TabsTrigger value="drivers" className="flex items-center space-x-2">
+              <Car className="h-4 w-4" />
+              <span>司機管理</span>
+            </TabsTrigger>
+            <TabsTrigger value="orders" className="flex items-center space-x-2">
+              <TrendingUp className="h-4 w-4" />
+              <span>訂單管理</span>
+            </TabsTrigger>
+          </TabsList>
 
-        {/* 最近訂單 */}
-        <Card>
-          <CardHeader>
-            <CardTitle>最近訂單</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {recentOrders.map((order) => {
-                const statusInfo = getStatusBadge(order.status);
-                return (
-                  <div key={order.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="font-medium">{order.car_type_label}</p>
-                      <p className="text-sm text-gray-600">
-                        {new Date(order.created_at).toLocaleString('zh-TW')}
-                      </p>
-                    </div>
-                    <Badge variant={statusInfo.variant}>
-                      {statusInfo.label}
-                    </Badge>
-                  </div>
-                );
-              })}
+          <TabsContent value="overview" className="space-y-6">
+            {/* 統計卡片 */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <TrendingUp className="h-8 w-8 text-blue-600 mx-auto mb-2" />
+                  <p className="text-2xl font-bold text-gray-800">{stats.total}</p>
+                  <p className="text-sm text-gray-600">總訂單</p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <Car className="h-8 w-8 text-orange-600 mx-auto mb-2" />
+                  <p className="text-2xl font-bold text-gray-800">{stats.waiting}</p>
+                  <p className="text-sm text-gray-600">等待中</p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <Users className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                  <p className="text-2xl font-bold text-gray-800">{stats.matched}</p>
+                  <p className="text-sm text-gray-600">已媒合</p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <Store className="h-8 w-8 text-purple-600 mx-auto mb-2" />
+                  <p className="text-2xl font-bold text-gray-800">{stats.completed}</p>
+                  <p className="text-sm text-gray-600">已完成</p>
+                </CardContent>
+              </Card>
             </div>
-          </CardContent>
-        </Card>
+
+            {/* 最近訂單 */}
+            <Card>
+              <CardHeader>
+                <CardTitle>最近訂單</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {recentOrders.map((order) => {
+                    const statusInfo = getStatusBadge(order.status);
+                    return (
+                      <div key={order.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <div>
+                          <p className="font-medium">{order.car_type_label}</p>
+                          <p className="text-sm text-gray-600">
+                            {new Date(order.created_at).toLocaleString('zh-TW')}
+                          </p>
+                        </div>
+                        <Badge variant={statusInfo.variant}>
+                          {statusInfo.label}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="merchants">
+            <MerchantManagement />
+          </TabsContent>
+
+          <TabsContent value="drivers">
+            <DriverManagement />
+          </TabsContent>
+
+          <TabsContent value="orders" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>訂單管理</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8 text-gray-500">
+                  訂單管理功能開發中...
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
