@@ -161,41 +161,6 @@ const AcceptedOrderCard = ({ order, onNavigate, onCancel, onComplete, onArrive }
             </div>
           )}
           
-          {/* 司機資訊 */}
-          {order.driverInfo && (
-            <div className="bg-green-50 p-3 rounded-lg space-y-2">
-              <div className="text-sm font-medium text-green-800 mb-2">司機資訊</div>
-              <div className="flex items-center text-sm text-green-700">
-                <User className="h-4 w-4 mr-2" />
-                {order.driverInfo.name}
-              </div>
-              {order.driverInfo.phone && (
-                <div className="flex items-center text-sm text-green-700">
-                  <Phone className="h-4 w-4 mr-2" />
-                  {order.driverInfo.phone}
-                </div>
-              )}
-              {order.driverInfo.plateNumber && (
-                <div className="flex items-center text-sm text-green-700">
-                  <Car className="h-4 w-4 mr-2" />
-                  車牌：{order.driverInfo.plateNumber}
-                </div>
-              )}
-              {order.driverInfo.carBrand && (
-                <div className="flex items-center text-sm text-green-700">
-                  <Car className="h-4 w-4 mr-2" />
-                  品牌：{order.driverInfo.carBrand}
-                </div>
-              )}
-              {order.driverInfo.carColor && (
-                <div className="flex items-center text-sm text-green-700">
-                  <Car className="h-4 w-4 mr-2" />
-                  顏色：{order.driverInfo.carColor}
-                </div>
-              )}
-            </div>
-          )}
-          
           <div className="flex items-center text-sm text-gray-600">
             <MapPin className="h-4 w-4 mr-2" />
             {getLocationDisplay()}
