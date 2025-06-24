@@ -41,6 +41,11 @@ export const driverOrderService = {
     return ordersWithData;
   },
 
+  async loadWaitingOrders(): Promise<CallRecord[]> {
+    console.log('開始載入待接訂單...');
+    return this.loadDriverOrders();
+  },
+
   async loadAcceptedOrders(driverId: string): Promise<CallRecord[]> {
     console.log('載入已接訂單...', driverId);
     
@@ -125,6 +130,112 @@ export const driverOrderService = {
         plateNumber: driverProfile.plate_number
       }
     });
+  },
+
+  async arriveAtOrder(orderId: string, driverId: string): Promise<void> {
+    console.log('司機抵達訂單:', orderId, driverId);
+    
+    const { error } = await supabase
+      .from('call_records')
+      .update({
+        status: 'arrived',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', orderId)
+      .eq('driver_id', driverId);
+
+    if (error) {
+      console.error('抵達操作錯誤:', error);
+      throw new Error('無法完成抵達操作');
+    }
+
+    console.log('司機抵達狀態更新成功:', { orderId, driverId });
+  },
+
+  async completeOrder(orderId: string, driverId: string, completionData?: OrderCompletionData): Promise<{ newStatus: string; message: string }> {
+    console.log('完成訂單:', orderId, driverId, completionData);
+    
+    // 獲取當前訂單狀態
+    const { data: currentOrder, error: fetchError } = await supabase
+      .from('call_records')
+      .select('status')
+      .eq('id', orderId)
+      .eq('driver_id', driverId)
+      .single();
+
+    if (fetchError || !currentOrder) {
+      console.error('獲取訂單狀態錯誤:', fetchError);
+      throw new Error('無法獲取訂單狀態');
+    }
+
+    let newStatus: string;
+    let message: string;
+
+    if (currentOrder.status === 'arrived') {
+      // 從已抵達到開始行程
+      newStatus = 'in_progress';
+      message = '行程已開始';
+    } else if (currentOrder.status === 'in_progress') {
+      // 從行程中到完成
+      newStatus = 'completed';
+      message = '訂單已完成';
+    } else {
+      throw new Error('訂單狀態不正確，無法完成操作');
+    }
+
+    const updateData: any = {
+      status: newStatus,
+      updated_at: new Date().toISOString()
+    };
+
+    if (newStatus === 'completed' && completionData) {
+      updateData.destination_address = completionData.destinationAddress;
+      updateData.distance_km = completionData.distanceKm;
+      updateData.fare_amount = completionData.fareAmount;
+      updateData.completed_at = new Date().toISOString();
+    }
+
+    const { error } = await supabase
+      .from('call_records')
+      .update(updateData)
+      .eq('id', orderId)
+      .eq('driver_id', driverId);
+
+    if (error) {
+      console.error('完成訂單錯誤:', error);
+      throw new Error('無法完成訂單操作');
+    }
+
+    console.log('訂單狀態更新成功:', { orderId, newStatus, completionData });
+    return { newStatus, message };
+  },
+
+  async cancelOrder(orderId: string, driverId: string): Promise<void> {
+    console.log('取消訂單:', orderId, driverId);
+    
+    // 將訂單狀態改回 waiting，並清除司機資訊
+    const { error } = await supabase
+      .from('call_records')
+      .update({
+        status: 'waiting',
+        driver_id: null,
+        driver_name: null,
+        driver_phone: null,
+        driver_car_brand: null,
+        driver_car_color: null,
+        driver_plate_number: null,
+        accepted_at: null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', orderId)
+      .eq('driver_id', driverId);
+
+    if (error) {
+      console.error('取消訂單錯誤:', error);
+      throw new Error('無法取消訂單');
+    }
+
+    console.log('訂單已取消並重新開放:', { orderId, driverId });
   },
 
   async updateOrderStatus(
