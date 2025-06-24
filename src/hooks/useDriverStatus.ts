@@ -276,19 +276,44 @@ export const useDriverStatus = () => {
     try {
       console.log('🔄 更新司機狀態:', { userId: profile.userId, status });
 
-      const { data: existingDriver, error: checkError } = await supabase
+      // 直接嘗試更新，如果不存在則插入
+      const { data: updateResult, error: updateError } = await supabase
         .from('driver_profiles')
-        .select('*')
+        .update({ 
+          status: status,
+          updated_at: new Date().toISOString()
+        })
         .eq('line_user_id', profile.userId)
-        .maybeSingle();
+        .select();
 
-      if (checkError) {
-        console.error('❌ 檢查司機資料錯誤:', checkError);
-        throw checkError;
-      }
+      if (updateError) {
+        console.error('❌ 更新司機狀態錯誤:', updateError);
+        
+        // 如果更新失敗，嘗試插入新記錄
+        console.log('👤 嘗試創建新司機資料');
+        const { error: insertError } = await supabase
+          .from('driver_profiles')
+          .insert({
+            line_user_id: profile.userId,
+            driver_id: profile.userId,
+            name: profile.displayName || '司機',
+            status: status,
+            vehicle_type: '一般車輛',
+            vehicle_brand: 'Toyota',
+            vehicle_color: '白色',
+            plate_number: 'ABC-1234',
+            join_date: new Date().toISOString().split('T')[0]
+          });
 
-      if (!existingDriver) {
-        console.log('👤 創建新司機資料');
+        if (insertError) {
+          console.error('❌ 創建司機資料錯誤:', insertError);
+          throw insertError;
+        }
+        
+        console.log('✅ 司機資料創建成功');
+      } else if (updateResult && updateResult.length === 0) {
+        // 如果更新成功但沒有影響任何行，表示記錄不存在，需要插入
+        console.log('👤 司機資料不存在，創建新記錄');
         const { error: insertError } = await supabase
           .from('driver_profiles')
           .insert({
@@ -310,20 +335,6 @@ export const useDriverStatus = () => {
         
         console.log('✅ 司機資料創建成功');
       } else {
-        console.log('📝 更新現有司機狀態');
-        const { error: updateError } = await supabase
-          .from('driver_profiles')
-          .update({ 
-            status: status,
-            updated_at: new Date().toISOString()
-          })
-          .eq('line_user_id', profile.userId);
-
-        if (updateError) {
-          console.error('❌ 更新司機狀態錯誤:', updateError);
-          throw updateError;
-        }
-        
         console.log('✅ 司機狀態更新成功');
       }
 
