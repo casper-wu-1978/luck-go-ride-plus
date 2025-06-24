@@ -89,15 +89,8 @@ export const useCallCar = () => {
       return;
     }
 
-    if (onlineDriversCount === 0) {
-      toast({
-        title: "目前無可用司機",
-        description: "請稍後再試，或聯繫客服協助",
-        variant: "destructive"
-      });
-      return;
-    }
-
+    // Removed the online drivers check - allow direct ordering
+    
     setIsLoading(true);
     
     const selectedCarType = CAR_TYPES.find(type => type.id === carType);
@@ -119,7 +112,7 @@ export const useCallCar = () => {
       
       toast({
         title: "叫車請求已送出",
-        description: "等待司機接單中，請稍候...",
+        description: "您的叫車請求已成功送出，我們會盡快為您安排司機",
       });
 
       setIsLoading(false);
