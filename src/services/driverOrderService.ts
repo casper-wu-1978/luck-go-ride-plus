@@ -1,4 +1,5 @@
 
+
 import { supabase } from "@/integrations/supabase/client";
 import type { CallRecord, OrderCompletionData } from "@/types/driverOrders";
 
@@ -83,15 +84,27 @@ export const driverOrderService = {
     console.log('司機接單 - 開始:', { orderId, driverId });
     
     try {
-      // 首先獲取司機的詳細資料
+      // 首先獲取司機的詳細資料，使用更明確的查詢
       console.log('正在獲取司機資料...', driverId);
       const { data: driverProfile, error: driverError } = await supabase
         .from('driver_profiles')
-        .select('name, phone, vehicle_brand, vehicle_color, plate_number')
+        .select(`
+          name, 
+          phone, 
+          vehicle_brand, 
+          vehicle_color, 
+          plate_number,
+          vehicle_type,
+          email
+        `)
         .eq('line_user_id', driverId)
         .single();
 
-      console.log('司機資料查詢結果:', { driverProfile, driverError });
+      console.log('司機資料查詢結果:', { 
+        driverProfile, 
+        driverError,
+        查詢條件: { line_user_id: driverId }
+      });
 
       if (driverError) {
         console.error('獲取司機資料錯誤:', driverError);
@@ -103,15 +116,24 @@ export const driverOrderService = {
         throw new Error('找不到司機資料，請先完善個人資料');
       }
 
-      // 準備更新的資料，確保欄位對應正確
+      // 檢查司機資料的完整性
+      console.log('檢查司機資料完整性:', {
+        姓名: driverProfile.name,
+        電話: driverProfile.phone,
+        車輛品牌: driverProfile.vehicle_brand,
+        車輛顏色: driverProfile.vehicle_color,
+        車牌號碼: driverProfile.plate_number
+      });
+
+      // 準備更新的資料，確保欄位對應正確，並處理空值
       const updateData = {
-        status: 'matched',
+        status: 'matched' as const,
         driver_id: driverId,
-        driver_name: driverProfile.name || '',
-        driver_phone: driverProfile.phone || '', // 從 phone 對應到 driver_phone
-        driver_car_brand: driverProfile.vehicle_brand || '', // 從 vehicle_brand 對應到 driver_car_brand  
-        driver_car_color: driverProfile.vehicle_color || '', // 從 vehicle_color 對應到 driver_car_color
-        driver_plate_number: driverProfile.plate_number || '', // 從 plate_number 對應到 driver_plate_number
+        driver_name: driverProfile.name || '未填寫',
+        driver_phone: driverProfile.phone || '未填寫',
+        driver_car_brand: driverProfile.vehicle_brand || '未填寫',
+        driver_car_color: driverProfile.vehicle_color || '未填寫',
+        driver_plate_number: driverProfile.plate_number || '未填寫',
         accepted_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
@@ -127,7 +149,7 @@ export const driverOrderService = {
         .update(updateData)
         .eq('id', orderId)
         .eq('status', 'waiting')
-        .select('*'); // 選擇所有欄位以便驗證更新結果
+        .select('*');
 
       console.log('訂單更新結果:', { updateResult, updateError });
 
@@ -153,6 +175,15 @@ export const driverOrderService = {
         車牌號碼: updatedRecord.driver_plate_number,
         完整記錄: updatedRecord
       });
+
+      // 最後再次確認資料庫中的資料
+      const { data: verifyData } = await supabase
+        .from('call_records')
+        .select('driver_name, driver_phone, driver_car_brand, driver_car_color, driver_plate_number')
+        .eq('id', orderId)
+        .single();
+      
+      console.log('資料庫驗證查詢結果:', verifyData);
 
     } catch (error) {
       console.error('接單過程發生錯誤:', error);
@@ -298,3 +329,4 @@ export const driverOrderService = {
     console.log('訂單狀態更新成功:', { orderId, status, completionData });
   }
 };
+
