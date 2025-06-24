@@ -26,7 +26,7 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
     setShowDevInfo(isDevelopment);
   }, [isDevelopment]);
 
-  // 如果是管理員路由，使用 email 認證
+  // 如果是管理員路由，直接返回 AuthPage 或 children
   if (isAdminRoute) {
     return <AuthPage />;
   }
