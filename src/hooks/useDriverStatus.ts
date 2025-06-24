@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLiff } from "@/contexts/LiffContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -11,6 +10,7 @@ export const useDriverStatus = () => {
   const [currentLocation, setCurrentLocation] = useState<string>("");
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [mapboxToken, setMapboxToken] = useState<string>("");
+  const locationIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (profile?.userId) {
@@ -18,6 +18,16 @@ export const useDriverStatus = () => {
       loadMapboxToken();
     }
   }, [profile?.userId]);
+
+  // 清理定位追蹤
+  useEffect(() => {
+    return () => {
+      if (locationIntervalRef.current) {
+        clearInterval(locationIntervalRef.current);
+        locationIntervalRef.current = null;
+      }
+    };
+  }, []);
 
   const checkDriverStatus = async () => {
     if (!profile?.userId) return;
@@ -44,8 +54,10 @@ export const useDriverStatus = () => {
         
         if (data.status === 'online') {
           setIsOnline(true);
+          startLocationTracking();
           console.log('✅ 司機目前狀態: 線上');
         } else {
+          stopLocationTracking();
           console.log('📴 司機目前狀態: 離線');
         }
       } else {
@@ -67,6 +79,104 @@ export const useDriverStatus = () => {
       console.log('✅ Mapbox token 載入成功');
     } catch (error) {
       console.error('❌ 載入 Mapbox token 錯誤:', error);
+    }
+  };
+
+  const startLocationTracking = () => {
+    console.log('📍 開始位置追蹤');
+    
+    // 立即獲取一次位置
+    getCurrentLocationSilent();
+    
+    // 設定定時追蹤，每30秒更新一次位置
+    if (locationIntervalRef.current) {
+      clearInterval(locationIntervalRef.current);
+    }
+    
+    locationIntervalRef.current = setInterval(() => {
+      getCurrentLocationSilent();
+    }, 30000); // 30秒
+  };
+
+  const stopLocationTracking = () => {
+    console.log('🛑 停止位置追蹤');
+    if (locationIntervalRef.current) {
+      clearInterval(locationIntervalRef.current);
+      locationIntervalRef.current = null;
+    }
+  };
+
+  const getCurrentLocationSilent = async () => {
+    if (!mapboxToken) return;
+
+    try {
+      if (!navigator.geolocation) return;
+
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          resolve,
+          reject,
+          {
+            enableHighAccuracy: false, // 省電模式
+            timeout: 10000,
+            maximumAge: 60000 // 允許使用1分鐘內的快取位置
+          }
+        );
+      });
+
+      const { latitude, longitude } = position.coords;
+      console.log('📍 自動獲取位置:', { latitude, longitude });
+      
+      // 更新資料庫中的司機位置
+      await updateDriverLocation(latitude, longitude);
+      
+      // 解析地址並更新UI
+      try {
+        const response = await fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?access_token=${mapboxToken}&language=zh-TW`
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.features && data.features.length > 0) {
+            const address = data.features[0].place_name;
+            setCurrentLocation(address);
+          } else {
+            const coords = `緯度: ${latitude.toFixed(6)}, 經度: ${longitude.toFixed(6)}`;
+            setCurrentLocation(coords);
+          }
+        }
+      } catch (geocodeError) {
+        console.error('地址解析錯誤:', geocodeError);
+        const coords = `緯度: ${latitude.toFixed(6)}, 經度: ${longitude.toFixed(6)}`;
+        setCurrentLocation(coords);
+      }
+    } catch (error) {
+      console.error('❌ 自動定位錯誤:', error);
+    }
+  };
+
+  const updateDriverLocation = async (latitude: number, longitude: number) => {
+    if (!profile?.userId) return;
+
+    try {
+      const { error } = await supabase
+        .from('driver_profiles')
+        .update({
+          current_latitude: latitude,
+          current_longitude: longitude,
+          location_updated_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('line_user_id', profile.userId);
+
+      if (error) {
+        console.error('❌ 更新司機位置錯誤:', error);
+      } else {
+        console.log('✅ 司機位置已更新');
+      }
+    } catch (error) {
+      console.error('❌ 更新司機位置異常:', error);
     }
   };
 
@@ -119,6 +229,9 @@ export const useDriverStatus = () => {
 
       const { latitude, longitude } = position.coords;
       console.log('📍 獲取到座標:', { latitude, longitude });
+      
+      // 更新資料庫中的司機位置
+      await updateDriverLocation(latitude, longitude);
       
       try {
         const response = await fetch(
@@ -338,13 +451,17 @@ export const useDriverStatus = () => {
         console.log('✅ 司機狀態更新成功');
       }
 
-      // 如果司機上線，檢查並通知待接訂單
+      // 如果司機上線，開始位置追蹤並檢查訂單
       if (status === 'online') {
+        startLocationTracking();
         console.log('🔍 司機上線，開始檢查待接訂單...');
         // 稍等一下確保資料庫更新完成
         setTimeout(() => {
           checkForPendingOrders(profile.userId);
         }, 1000);
+      } else {
+        // 司機下線，停止位置追蹤
+        stopLocationTracking();
       }
 
       console.log('✅ 司機狀態更新成功:', status);
@@ -367,7 +484,7 @@ export const useDriverStatus = () => {
       
       toast({
         title: checked ? "已上線" : "已下線",
-        description: checked ? "開始接收訂單通知" : "停止接收訂單通知",
+        description: checked ? "開始接收訂單通知並追蹤位置" : "停止接收訂單通知及位置追蹤",
       });
     } catch (error) {
       console.error('❌ 切換狀態失敗:', error);
