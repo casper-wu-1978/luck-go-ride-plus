@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import type { CallRecord, OrderCompletionData } from "@/types/driverOrders";
 
@@ -102,33 +103,31 @@ export const driverOrderService = {
         throw new Error('找不到司機資料，請先完善個人資料');
       }
 
+      // 準備更新的資料，確保欄位對應正確
+      const updateData = {
+        status: 'matched',
+        driver_id: driverId,
+        driver_name: driverProfile.name || '',
+        driver_phone: driverProfile.phone || '', // 從 phone 對應到 driver_phone
+        driver_car_brand: driverProfile.vehicle_brand || '', // 從 vehicle_brand 對應到 driver_car_brand  
+        driver_car_color: driverProfile.vehicle_color || '', // 從 vehicle_color 對應到 driver_car_color
+        driver_plate_number: driverProfile.plate_number || '', // 從 plate_number 對應到 driver_plate_number
+        accepted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
       console.log('準備更新訂單資料:', {
         orderId,
-        driverId,
-        driverName: driverProfile.name,
-        driverPhone: driverProfile.phone, // phone -> driver_phone
-        vehicleBrand: driverProfile.vehicle_brand, // vehicle_brand -> driver_car_brand
-        vehicleColor: driverProfile.vehicle_color, // vehicle_color -> driver_car_color
-        plateNumber: driverProfile.plate_number // plate_number -> driver_plate_number
+        updateData
       });
 
-      // 更新訂單狀態並加入司機資訊（修正欄位對應）
+      // 更新訂單狀態並加入司機完整資訊
       const { data: updateResult, error: updateError } = await supabase
         .from('call_records')
-        .update({
-          status: 'matched',
-          driver_id: driverId,
-          driver_name: driverProfile.name || '',
-          driver_phone: driverProfile.phone || '', // phone -> driver_phone
-          driver_car_brand: driverProfile.vehicle_brand || '', // vehicle_brand -> driver_car_brand
-          driver_car_color: driverProfile.vehicle_color || '', // vehicle_color -> driver_car_color
-          driver_plate_number: driverProfile.plate_number || '', // plate_number -> driver_plate_number
-          accepted_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', orderId)
         .eq('status', 'waiting')
-        .select();
+        .select('*'); // 選擇所有欄位以便驗證更新結果
 
       console.log('訂單更新結果:', { updateResult, updateError });
 
@@ -142,16 +141,17 @@ export const driverOrderService = {
         throw new Error('接單失敗，訂單可能已被其他司機接走');
       }
 
-      console.log('接單成功，司機和車輛資料已更新:', {
+      // 驗證更新結果
+      const updatedRecord = updateResult[0];
+      console.log('接單成功，最終資料驗證:', {
         orderId,
         driverId,
-        driverName: driverProfile.name,
-        vehicleInfo: {
-          brand: driverProfile.vehicle_brand,
-          color: driverProfile.vehicle_color,
-          plateNumber: driverProfile.plate_number
-        },
-        updateResult: updateResult[0]
+        司機姓名: updatedRecord.driver_name,
+        司機電話: updatedRecord.driver_phone,
+        車輛品牌: updatedRecord.driver_car_brand,
+        車輛顏色: updatedRecord.driver_car_color,
+        車牌號碼: updatedRecord.driver_plate_number,
+        完整記錄: updatedRecord
       });
 
     } catch (error) {
