@@ -13,6 +13,13 @@ export interface CallRecord {
     phone: string;
     businessAddress: string;
   };
+  driverInfo?: {
+    name: string;
+    phone: string;
+    plateNumber: string;
+    carBrand: string;
+    carColor: string;
+  };
 }
 
 export interface OrderCompletionData {

@@ -67,7 +67,7 @@ export const driverOrderService = {
     console.log('開始載入已接訂單...');
     const startTime = Date.now();
     
-    // 先獲取已接訂單
+    // 先獲取已接訂單，並包含司機資訊
     const { data: orders, error } = await supabase
       .from('call_records')
       .select('*')
@@ -92,14 +92,21 @@ export const driverOrderService = {
       .select('line_user_id, business_name, contact_name, phone, business_address')
       .in('line_user_id', userIds);
 
+    // 獲取司機詳細資料
+    const { data: driverData } = await supabase
+      .from('driver_profiles')
+      .select('driver_id, name, phone, plate_number, vehicle_brand, vehicle_color')
+      .eq('driver_id', driverId)
+      .single();
+
     // 建立商家資料的對應表
     const merchantMap = new Map();
     merchantsData?.forEach(merchant => {
       merchantMap.set(merchant.line_user_id, merchant);
     });
 
-    // 組合訂單和商家資料
-    const ordersWithMerchant = orders.map(order => {
+    // 組合訂單、商家和司機資料
+    const ordersWithData = orders.map(order => {
       const merchantData = merchantMap.get(order.line_user_id);
       
       return {
@@ -115,23 +122,48 @@ export const driverOrderService = {
           contactName: merchantData.contact_name,
           phone: merchantData.phone,
           businessAddress: merchantData.business_address
+        } : undefined,
+        driverInfo: driverData ? {
+          name: driverData.name,
+          phone: driverData.phone || '',
+          plateNumber: driverData.plate_number || '',
+          carBrand: driverData.vehicle_brand || '',
+          carColor: driverData.vehicle_color || ''
         } : undefined
       };
     });
 
     const loadTime = Date.now() - startTime;
-    console.log(`已接訂單載入完成，耗時: ${loadTime}ms，共 ${ordersWithMerchant.length} 筆`);
+    console.log(`已接訂單載入完成，耗時: ${loadTime}ms，共 ${ordersWithData.length} 筆`);
     
-    return ordersWithMerchant;
+    return ordersWithData;
   },
 
   async acceptOrder(orderId: string, driverId: string) {
+    // 先獲取司機資料
+    const { data: driverProfile, error: driverError } = await supabase
+      .from('driver_profiles')
+      .select('name, phone, plate_number, vehicle_brand, vehicle_color')
+      .eq('driver_id', driverId)
+      .single();
+
+    if (driverError) {
+      console.error('獲取司機資料錯誤:', driverError);
+      throw new Error('無法獲取司機資料');
+    }
+
+    // 更新訂單狀態並包含司機資訊
     const { error } = await supabase
       .from('call_records')
       .update({
         status: 'matched',
         driver_id: driverId,
-        accepted_at: new Date().toISOString()
+        accepted_at: new Date().toISOString(),
+        driver_name: driverProfile?.name || '',
+        driver_phone: driverProfile?.phone || '',
+        driver_plate_number: driverProfile?.plate_number || '',
+        driver_car_brand: driverProfile?.vehicle_brand || '',
+        driver_car_color: driverProfile?.vehicle_color || ''
       })
       .eq('id', orderId);
 
