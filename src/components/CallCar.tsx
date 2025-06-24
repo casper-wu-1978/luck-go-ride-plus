@@ -88,7 +88,10 @@ const CallCar = () => {
         onCancelCall={handleCancelCall}
       />
 
-      <OnlineDriversStatus count={onlineDriversCount} />
+      <OnlineDriversStatus 
+        onlineDriversCount={onlineDriversCount} 
+        onRefresh={loadOnlineDriversCount} 
+      />
     </div>
   );
 };
