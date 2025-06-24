@@ -14,7 +14,6 @@ interface OrderCompletionFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: {
-    orderId: string;
     destinationAddress: string;
     distanceKm: number;
     fareAmount: number;
@@ -120,7 +119,6 @@ const OrderCompletionForm = ({ orderId, isOpen, onClose, onSubmit }: OrderComple
     
     try {
       await onSubmit({
-        orderId,
         destinationAddress: destinationAddress.trim(),
         distanceKm: parseFloat(distanceKm),
         fareAmount: parseFloat(fareAmount)
