@@ -8,7 +8,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Car, Hash } from "lucide-react";
 import { CAR_TYPES, FAVORITE_TYPES } from "@/constants/callCar";
 import { FavoriteCode, FavoriteAddress } from "@/types/callCar";
-import { CallRecord } from "@/types/callCar";
 
 interface CallFormProps {
   carType: string;
@@ -25,9 +24,7 @@ interface CallFormProps {
   favoriteAddresses: FavoriteAddress[];
   isLoading: boolean;
   callRecordsCount: number;
-  callRecords: CallRecord[];
   onCallCar: () => void;
-  onCancelCall: (recordId: string) => void;
 }
 
 const CallForm = ({

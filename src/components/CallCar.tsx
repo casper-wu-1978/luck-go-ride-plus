@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { useCallCar } from "@/hooks/useCallCar";
 import { useCallCarProfile } from "@/hooks/useCallCarProfile";
@@ -89,9 +88,7 @@ const CallCar = () => {
         favoriteAddresses={favoriteAddresses}
         isLoading={isLoading}
         callRecordsCount={callRecords.length}
-        callRecords={callRecords}
         onCallCar={handleCallCar}
-        onCancelCall={handleCancelCall}
       />
 
       {callRecords.length > 0 && userProfile && (
