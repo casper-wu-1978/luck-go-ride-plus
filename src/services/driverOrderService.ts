@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import type { CallRecord, OrderCompletionData } from "@/types/driverOrders";
 
@@ -80,56 +79,85 @@ export const driverOrderService = {
   },
 
   async acceptOrder(orderId: string, driverId: string): Promise<void> {
-    console.log('司機接單:', orderId, driverId);
+    console.log('司機接單 - 開始:', { orderId, driverId });
     
-    // 首先獲取司機的詳細資料
-    const { data: driverProfile, error: driverError } = await supabase
-      .from('driver_profiles')
-      .select('name, phone, vehicle_brand, vehicle_color, plate_number')
-      .eq('line_user_id', driverId)
-      .single();
+    try {
+      // 首先獲取司機的詳細資料
+      console.log('正在獲取司機資料...', driverId);
+      const { data: driverProfile, error: driverError } = await supabase
+        .from('driver_profiles')
+        .select('name, phone, vehicle_brand, vehicle_color, plate_number')
+        .eq('line_user_id', driverId)
+        .single();
 
-    if (driverError) {
-      console.error('獲取司機資料錯誤:', driverError);
-      throw new Error('無法獲取司機資料');
-    }
+      console.log('司機資料查詢結果:', { driverProfile, driverError });
 
-    if (!driverProfile) {
-      throw new Error('找不到司機資料，請先完善個人資料');
-    }
-
-    // 更新訂單狀態並加入司機資訊（包含車輛資訊）
-    const { error } = await supabase
-      .from('call_records')
-      .update({
-        status: 'matched',
-        driver_id: driverId,
-        driver_name: driverProfile.name,
-        driver_phone: driverProfile.phone || '',
-        driver_car_brand: driverProfile.vehicle_brand || '',
-        driver_car_color: driverProfile.vehicle_color || '',
-        driver_plate_number: driverProfile.plate_number || '',
-        accepted_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', orderId)
-      .eq('status', 'waiting');
-
-    if (error) {
-      console.error('接單錯誤:', error);
-      throw new Error('接單失敗，請稍後再試');
-    }
-
-    console.log('接單成功，司機資料已更新:', {
-      orderId,
-      driverId,
-      driverName: driverProfile.name,
-      vehicleInfo: {
-        brand: driverProfile.vehicle_brand,
-        color: driverProfile.vehicle_color,
-        plateNumber: driverProfile.plate_number
+      if (driverError) {
+        console.error('獲取司機資料錯誤:', driverError);
+        throw new Error(`無法獲取司機資料: ${driverError.message}`);
       }
-    });
+
+      if (!driverProfile) {
+        console.error('司機資料不存在:', driverId);
+        throw new Error('找不到司機資料，請先完善個人資料');
+      }
+
+      console.log('準備更新訂單資料:', {
+        orderId,
+        driverId,
+        driverName: driverProfile.name,
+        driverPhone: driverProfile.phone,
+        vehicleBrand: driverProfile.vehicle_brand,
+        vehicleColor: driverProfile.vehicle_color,
+        plateNumber: driverProfile.plate_number
+      });
+
+      // 更新訂單狀態並加入司機資訊（包含車輛資訊）
+      const { data: updateResult, error: updateError } = await supabase
+        .from('call_records')
+        .update({
+          status: 'matched',
+          driver_id: driverId,
+          driver_name: driverProfile.name || '',
+          driver_phone: driverProfile.phone || '',
+          driver_car_brand: driverProfile.vehicle_brand || '',
+          driver_car_color: driverProfile.vehicle_color || '',
+          driver_plate_number: driverProfile.plate_number || '',
+          accepted_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', orderId)
+        .eq('status', 'waiting')
+        .select();
+
+      console.log('訂單更新結果:', { updateResult, updateError });
+
+      if (updateError) {
+        console.error('接單錯誤:', updateError);
+        throw new Error(`接單失敗: ${updateError.message}`);
+      }
+
+      if (!updateResult || updateResult.length === 0) {
+        console.error('訂單更新失敗 - 可能訂單已被其他司機接走或狀態不正確');
+        throw new Error('接單失敗，訂單可能已被其他司機接走');
+      }
+
+      console.log('接單成功，司機和車輛資料已更新:', {
+        orderId,
+        driverId,
+        driverName: driverProfile.name,
+        vehicleInfo: {
+          brand: driverProfile.vehicle_brand,
+          color: driverProfile.vehicle_color,
+          plateNumber: driverProfile.plate_number
+        },
+        updateResult: updateResult[0]
+      });
+
+    } catch (error) {
+      console.error('接單過程發生錯誤:', error);
+      throw error;
+    }
   },
 
   async arriveAtOrder(orderId: string, driverId: string): Promise<void> {
