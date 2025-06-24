@@ -5,9 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { useLiff } from "@/contexts/LiffContext";
 import VehicleTypeSelect from "@/components/driver/VehicleTypeSelect";
+import { DriverProfileService } from "@/services/driverProfileService";
 import type { DriverProfile } from "@/types/profile";
 
 interface DriverProfileFormProps {
@@ -51,7 +51,7 @@ const DriverProfileForm = ({ profile, onProfileUpdate }: DriverProfileFormProps)
 
     setIsLoading(true);
     try {
-      const updateData = {
+      const profileData: DriverProfile = {
         name: formData.name,
         phone: formData.phone,
         email: formData.email,
@@ -60,18 +60,9 @@ const DriverProfileForm = ({ profile, onProfileUpdate }: DriverProfileFormProps)
         vehicle_color: formData.vehicle_color,
         plate_number: formData.plate_number,
         license_number: formData.license_number,
-        updated_at: new Date().toISOString(),
       };
 
-      const { error } = await supabase
-        .from('driver_profiles')
-        .upsert({
-          driver_id: liffProfile.userId,
-          line_user_id: liffProfile.userId,
-          ...updateData,
-        });
-
-      if (error) throw error;
+      await DriverProfileService.saveProfile(liffProfile.userId, profileData);
 
       toast({
         title: "資料已更新",
@@ -79,11 +70,11 @@ const DriverProfileForm = ({ profile, onProfileUpdate }: DriverProfileFormProps)
       });
       
       onProfileUpdate();
-    } catch (error) {
+    } catch (error: any) {
       console.error('更新司機資料錯誤:', error);
       toast({
         title: "更新失敗",
-        description: "無法更新司機資料，請稍後再試",
+        description: error.message || "無法更新司機資料，請稍後再試",
         variant: "destructive",
       });
     } finally {
