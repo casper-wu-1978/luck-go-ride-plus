@@ -1,0 +1,72 @@
+
+-- 插入一些測試司機資料到 driver_profiles 表格（使用正確的狀態值）
+INSERT INTO driver_profiles (
+  line_user_id,
+  driver_id,
+  name,
+  phone,
+  email,
+  vehicle_type,
+  vehicle_brand,
+  vehicle_color,
+  plate_number,
+  license_number,
+  status,
+  rating
+) VALUES 
+(
+  'test_driver_001',
+  'DRV001',
+  '王小明',
+  '0912345678',
+  'wang@example.com',
+  '轎車',
+  'Toyota',
+  '白色',
+  'ABC-1234',
+  'L123456789',
+  'online',
+  4.5
+),
+(
+  'test_driver_002',
+  'DRV002',
+  '李美華',
+  '0923456789',
+  'lee@example.com',
+  '休旅車',
+  'Honda',
+  '黑色',
+  'DEF-5678',
+  'L987654321',
+  'offline',
+  4.8
+),
+(
+  'test_driver_003',
+  'DRV003',
+  '張志強',
+  '0934567890',
+  'zhang@example.com',
+  '小貨車',
+  'Nissan',
+  '藍色',
+  'GHI-9012',
+  'L456789123',
+  'busy',
+  4.2
+),
+(
+  'test_driver_004',
+  'DRV004',
+  '陳雅婷',
+  '0945678901',
+  NULL,
+  '轎車',
+  'Mazda',
+  '紅色',
+  'JKL-3456',
+  'L321654987',
+  'offline',
+  3.9
+);
