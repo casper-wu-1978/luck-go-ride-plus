@@ -23,11 +23,11 @@ const DriverProfileForm = ({ profile, onProfileUpdate }: DriverProfileFormProps)
     name: "",
     phone: "",
     email: "",
-    vehicleType: "",
-    vehicleBrand: "",
-    vehicleColor: "",
-    plateNumber: "",
-    licenseNumber: "",
+    vehicle_type: "",
+    vehicle_brand: "",
+    vehicle_color: "",
+    plate_number: "",
+    license_number: "",
   });
 
   useEffect(() => {
@@ -36,11 +36,11 @@ const DriverProfileForm = ({ profile, onProfileUpdate }: DriverProfileFormProps)
         name: profile.name || "",
         phone: profile.phone || "",
         email: profile.email || "",
-        vehicleType: profile.vehicleType || "",
-        vehicleBrand: profile.vehicleBrand || "",
-        vehicleColor: profile.vehicleColor || "",
-        plateNumber: profile.plateNumber || "",
-        licenseNumber: profile.licenseNumber || "",
+        vehicle_type: profile.vehicle_type || "",
+        vehicle_brand: profile.vehicle_brand || "",
+        vehicle_color: profile.vehicle_color || "",
+        plate_number: profile.plate_number || "",
+        license_number: profile.license_number || "",
       });
     }
   }, [profile]);
@@ -55,11 +55,11 @@ const DriverProfileForm = ({ profile, onProfileUpdate }: DriverProfileFormProps)
         name: formData.name,
         phone: formData.phone,
         email: formData.email,
-        vehicle_type: formData.vehicleType,
-        vehicle_brand: formData.vehicleBrand,
-        vehicle_color: formData.vehicleColor,
-        plate_number: formData.plateNumber,
-        license_number: formData.licenseNumber,
+        vehicle_type: formData.vehicle_type,
+        vehicle_brand: formData.vehicle_brand,
+        vehicle_color: formData.vehicle_color,
+        plate_number: formData.plate_number,
+        license_number: formData.license_number,
         updated_at: new Date().toISOString(),
       };
 
@@ -128,16 +128,16 @@ const DriverProfileForm = ({ profile, onProfileUpdate }: DriverProfileFormProps)
           </div>
 
           <VehicleTypeSelect
-            value={formData.vehicleType}
-            onValueChange={(value) => setFormData(prev => ({ ...prev, vehicleType: value }))}
+            value={formData.vehicle_type}
+            onValueChange={(value) => setFormData(prev => ({ ...prev, vehicle_type: value }))}
           />
 
           <div>
             <Label htmlFor="vehicleBrand">車輛廠牌</Label>
             <Input
               id="vehicleBrand"
-              value={formData.vehicleBrand}
-              onChange={(e) => setFormData(prev => ({ ...prev, vehicleBrand: e.target.value }))}
+              value={formData.vehicle_brand}
+              onChange={(e) => setFormData(prev => ({ ...prev, vehicle_brand: e.target.value }))}
             />
           </div>
 
@@ -145,8 +145,8 @@ const DriverProfileForm = ({ profile, onProfileUpdate }: DriverProfileFormProps)
             <Label htmlFor="vehicleColor">車輛顏色</Label>
             <Input
               id="vehicleColor"
-              value={formData.vehicleColor}
-              onChange={(e) => setFormData(prev => ({ ...prev, vehicleColor: e.target.value }))}
+              value={formData.vehicle_color}
+              onChange={(e) => setFormData(prev => ({ ...prev, vehicle_color: e.target.value }))}
             />
           </div>
 
@@ -154,8 +154,8 @@ const DriverProfileForm = ({ profile, onProfileUpdate }: DriverProfileFormProps)
             <Label htmlFor="plateNumber">車牌號碼</Label>
             <Input
               id="plateNumber"
-              value={formData.plateNumber}
-              onChange={(e) => setFormData(prev => ({ ...prev, plateNumber: e.target.value }))}
+              value={formData.plate_number}
+              onChange={(e) => setFormData(prev => ({ ...prev, plate_number: e.target.value }))}
             />
           </div>
 
@@ -163,8 +163,8 @@ const DriverProfileForm = ({ profile, onProfileUpdate }: DriverProfileFormProps)
             <Label htmlFor="licenseNumber">駕照號碼</Label>
             <Input
               id="licenseNumber"
-              value={formData.licenseNumber}
-              onChange={(e) => setFormData(prev => ({ ...prev, licenseNumber: e.target.value }))}
+              value={formData.license_number}
+              onChange={(e) => setFormData(prev => ({ ...prev, license_number: e.target.value }))}
             />
           </div>
 

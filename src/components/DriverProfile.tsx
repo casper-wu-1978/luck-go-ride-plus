@@ -10,20 +10,20 @@ import ProfileSettings from "@/components/profile/ProfileSettings";
 
 const DriverProfile = () => {
   const { profile: liffProfile, isLoading: liffLoading } = useLiff();
-  const [isEditing, setIsEditing] = useState(false);
   const [notifications, setNotifications] = useState(true);
   
   const {
     profile,
-    editProfile,
-    setEditProfile,
     isLoading,
-    handleSaveProfile,
-    handleCancelEdit,
   } = useDriverProfile();
 
   const handleExit = () => {
     closeLiff();
+  };
+
+  const handleProfileUpdate = () => {
+    // Trigger a refresh of the profile data
+    window.location.reload();
   };
 
   if (liffLoading || isLoading) {
@@ -43,13 +43,7 @@ const DriverProfile = () => {
 
       <DriverProfileForm
         profile={profile}
-        editProfile={editProfile}
-        setEditProfile={setEditProfile}
-        isEditing={isEditing}
-        setIsEditing={setIsEditing}
-        isLoading={isLoading}
-        onSaveProfile={handleSaveProfile}
-        onCancelEdit={handleCancelEdit}
+        onProfileUpdate={handleProfileUpdate}
       />
 
       <ProfileSettings
