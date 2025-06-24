@@ -3,7 +3,10 @@ import type { CallRecord, OrderCompletionData } from "@/types/driverOrders";
 
 export const driverOrderService = {
   async loadWaitingOrders(): Promise<CallRecord[]> {
-    // First get the basic call records
+    console.log('開始載入待接訂單...');
+    const startTime = Date.now();
+    
+    // 先獲取所有待接訂單
     const { data: orders, error } = await supabase
       .from('call_records')
       .select('*')
@@ -16,41 +19,55 @@ export const driverOrderService = {
     }
 
     if (!orders || orders.length === 0) {
+      console.log('無待接訂單');
       return [];
     }
 
-    // Then get merchant data for each order
-    const ordersWithMerchant = await Promise.all(
-      orders.map(async (order) => {
-        const { data: merchantData } = await supabase
-          .from('merchant_profiles')
-          .select('business_name, contact_name, phone, business_address')
-          .eq('line_user_id', order.line_user_id)
-          .single();
+    // 一次性獲取所有相關的商家資料
+    const userIds = [...new Set(orders.map(order => order.line_user_id))];
+    const { data: merchantsData } = await supabase
+      .from('merchant_profiles')
+      .select('line_user_id, business_name, contact_name, phone, business_address')
+      .in('line_user_id', userIds);
 
-        return {
-          id: order.id,
-          carType: order.car_type,
-          carTypeLabel: order.car_type_label,
-          status: order.status,
-          timestamp: new Date(order.created_at),
-          favoriteType: order.favorite_type,
-          favoriteInfo: order.favorite_info || undefined,
-          merchantInfo: merchantData ? {
-            businessName: merchantData.business_name,
-            contactName: merchantData.contact_name,
-            phone: merchantData.phone,
-            businessAddress: merchantData.business_address
-          } : undefined
-        };
-      })
-    );
+    // 建立商家資料的對應表
+    const merchantMap = new Map();
+    merchantsData?.forEach(merchant => {
+      merchantMap.set(merchant.line_user_id, merchant);
+    });
 
+    // 組合訂單和商家資料
+    const ordersWithMerchant = orders.map(order => {
+      const merchantData = merchantMap.get(order.line_user_id);
+      
+      return {
+        id: order.id,
+        carType: order.car_type,
+        carTypeLabel: order.car_type_label,
+        status: order.status,
+        timestamp: new Date(order.created_at),
+        favoriteType: order.favorite_type,
+        favoriteInfo: order.favorite_info || undefined,
+        merchantInfo: merchantData ? {
+          businessName: merchantData.business_name,
+          contactName: merchantData.contact_name,
+          phone: merchantData.phone,
+          businessAddress: merchantData.business_address
+        } : undefined
+      };
+    });
+
+    const loadTime = Date.now() - startTime;
+    console.log(`待接訂單載入完成，耗時: ${loadTime}ms，共 ${ordersWithMerchant.length} 筆`);
+    
     return ordersWithMerchant;
   },
 
   async loadAcceptedOrders(driverId: string): Promise<CallRecord[]> {
-    // First get the basic call records
+    console.log('開始載入已接訂單...');
+    const startTime = Date.now();
+    
+    // 先獲取已接訂單
     const { data: orders, error } = await supabase
       .from('call_records')
       .select('*')
@@ -64,36 +81,47 @@ export const driverOrderService = {
     }
 
     if (!orders || orders.length === 0) {
+      console.log('無已接訂單');
       return [];
     }
 
-    // Then get merchant data for each order
-    const ordersWithMerchant = await Promise.all(
-      orders.map(async (order) => {
-        const { data: merchantData } = await supabase
-          .from('merchant_profiles')
-          .select('business_name, contact_name, phone, business_address')
-          .eq('line_user_id', order.line_user_id)
-          .single();
+    // 一次性獲取所有相關的商家資料
+    const userIds = [...new Set(orders.map(order => order.line_user_id))];
+    const { data: merchantsData } = await supabase
+      .from('merchant_profiles')
+      .select('line_user_id, business_name, contact_name, phone, business_address')
+      .in('line_user_id', userIds);
 
-        return {
-          id: order.id,
-          carType: order.car_type,
-          carTypeLabel: order.car_type_label,
-          status: order.status,
-          timestamp: new Date(order.created_at),
-          favoriteType: order.favorite_type,
-          favoriteInfo: order.favorite_info || undefined,
-          merchantInfo: merchantData ? {
-            businessName: merchantData.business_name,
-            contactName: merchantData.contact_name,
-            phone: merchantData.phone,
-            businessAddress: merchantData.business_address
-          } : undefined
-        };
-      })
-    );
+    // 建立商家資料的對應表
+    const merchantMap = new Map();
+    merchantsData?.forEach(merchant => {
+      merchantMap.set(merchant.line_user_id, merchant);
+    });
 
+    // 組合訂單和商家資料
+    const ordersWithMerchant = orders.map(order => {
+      const merchantData = merchantMap.get(order.line_user_id);
+      
+      return {
+        id: order.id,
+        carType: order.car_type,
+        carTypeLabel: order.car_type_label,
+        status: order.status,
+        timestamp: new Date(order.created_at),
+        favoriteType: order.favorite_type,
+        favoriteInfo: order.favorite_info || undefined,
+        merchantInfo: merchantData ? {
+          businessName: merchantData.business_name,
+          contactName: merchantData.contact_name,
+          phone: merchantData.phone,
+          businessAddress: merchantData.business_address
+        } : undefined
+      };
+    });
+
+    const loadTime = Date.now() - startTime;
+    console.log(`已接訂單載入完成，耗時: ${loadTime}ms，共 ${ordersWithMerchant.length} 筆`);
+    
     return ordersWithMerchant;
   },
 

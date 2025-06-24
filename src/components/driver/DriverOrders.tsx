@@ -51,6 +51,7 @@ const DriverOrders = () => {
         <div className="text-center">
           <Car className="h-12 w-12 text-blue-600 mx-auto mb-4 animate-bounce" />
           <p className="text-blue-800">載入訂單中...</p>
+          <p className="text-blue-600 text-sm mt-1">正在同步最新資料</p>
         </div>
       </div>
     );
