@@ -52,6 +52,11 @@ const CallRecords = ({ callRecords, userProfile, onCancelCall }: CallRecordsProp
     }
   };
 
+  // 判斷是否可以取消訂單
+  const canCancelOrder = (status: string) => {
+    return ['waiting', 'matched'].includes(status);
+  };
+
   if (callRecords.length === 0) {
     return null;
   }
@@ -83,7 +88,7 @@ const CallRecords = ({ callRecords, userProfile, onCancelCall }: CallRecordsProp
                       {getStatusIcon(record.status)}
                       <span>{getStatusText(record.status)}</span>
                     </div>
-                    {record.status === 'waiting' && (
+                    {canCancelOrder(record.status) && (
                       <Button
                         size="sm"
                         variant="destructive"
