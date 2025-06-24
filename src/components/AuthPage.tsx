@@ -21,8 +21,10 @@ const AuthPage = () => {
 
   // 如果已登入，導向管理頁面
   useEffect(() => {
+    console.log('AuthPage useEffect - user:', user, 'isLoading:', isLoading);
     if (user && !isLoading) {
-      navigate('/admin');
+      console.log('User is authenticated, navigating to admin...');
+      navigate('/admin', { replace: true });
     }
   }, [user, isLoading, navigate]);
 
@@ -33,6 +35,7 @@ const AuthPage = () => {
     try {
       if (isLogin) {
         // 登入
+        console.log('Attempting login...');
         const { error } = await signIn(email, password);
 
         if (error) {
@@ -52,11 +55,16 @@ const AuthPage = () => {
             variant: "destructive",
           });
         } else {
+          console.log('Login successful, showing success toast...');
           toast({
             title: "登入成功",
-            description: "歡迎回來！",
+            description: "正在進入管理頁面...",
           });
-          navigate('/admin');
+          // 給一個短暫延遲讓 toast 顯示，然後導航
+          setTimeout(() => {
+            console.log('Navigating to admin after successful login...');
+            navigate('/admin', { replace: true });
+          }, 1000);
         }
       } else {
         // 註冊
@@ -78,9 +86,14 @@ const AuthPage = () => {
             title: "註冊成功",
             description: "帳戶創建成功，正在登入...",
           });
+          // 註冊成功後也給予導航
+          setTimeout(() => {
+            navigate('/admin', { replace: true });
+          }, 1000);
         }
       }
     } catch (error) {
+      console.error('Auth error:', error);
       toast({
         title: "發生錯誤",
         description: "請稍後再試",
@@ -97,6 +110,18 @@ const AuthPage = () => {
         <div className="text-center">
           <Shield className="h-12 w-12 text-purple-600 mx-auto mb-4 animate-pulse" />
           <p className="text-purple-800">載入中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 如果用戶已登入，顯示載入中狀態
+  if (user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <Shield className="h-12 w-12 text-purple-600 mx-auto mb-4 animate-pulse" />
+          <p className="text-purple-800">正在進入管理頁面...</p>
         </div>
       </div>
     );

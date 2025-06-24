@@ -51,16 +51,19 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const signIn = async (email: string, password: string) => {
     console.log('Attempting sign in for:', email);
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
     
     if (error) {
       console.error('Sign in error:', error);
+      return { error };
     }
-    
-    return { error };
+
+    console.log('Sign in successful:', data.user?.email);
+    // 狀態會通過 onAuthStateChange 自動更新
+    return { error: null };
   };
 
   const signUp = async (email: string, password: string, name?: string) => {
@@ -83,6 +86,8 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       console.error('Sign up error:', error);
       return { error };
     }
+
+    console.log('Sign up result:', data);
 
     // 如果註冊成功但需要確認郵件，提供特殊處理
     if (data.user && !data.session) {
