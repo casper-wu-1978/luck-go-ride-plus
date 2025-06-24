@@ -1,4 +1,3 @@
-
 import { useEffect } from "react";
 import { useCallCar } from "@/hooks/useCallCar";
 import { useCallCarProfile } from "@/hooks/useCallCarProfile";
@@ -68,17 +67,7 @@ const CallCar = () => {
   }
 
   return (
-    <div className="space-y-4">
-      {/* 實時連接狀態指示器 */}
-      <div className="text-xs text-gray-500 text-center">
-        實時連接狀態: {isConnected ? '✅ 已連接' : '❌ 未連接'}
-      </div>
-
-      <OnlineDriversStatus
-        onlineDriversCount={onlineDriversCount}
-        onRefresh={loadOnlineDriversCount}
-      />
-
+    <div className="space-y-6">
       <CallForm
         carType={carType}
         setCarType={setCarType}
@@ -94,16 +83,12 @@ const CallCar = () => {
         favoriteAddresses={favoriteAddresses}
         isLoading={isLoading}
         callRecordsCount={callRecords.length}
+        callRecords={callRecords}
         onCallCar={handleCallCar}
+        onCancelCall={handleCancelCall}
       />
 
-      {userProfile && (
-        <CallRecords
-          callRecords={callRecords}
-          userProfile={userProfile}
-          onCancelCall={handleCancelCall}
-        />
-      )}
+      <OnlineDriversStatus count={onlineDriversCount} />
     </div>
   );
 };

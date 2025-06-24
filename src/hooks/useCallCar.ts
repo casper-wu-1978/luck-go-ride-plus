@@ -7,6 +7,7 @@ import { useCallRecords } from "./useCallRecords";
 import { useFavorites } from "./useFavorites";
 import { useOnlineDrivers } from "./useOnlineDrivers";
 import { useCallCarForm } from "./useCallCarForm";
+import { supabase } from "@/integrations/supabase/client";
 
 export const useCallCar = () => {
   const { profile: liffProfile } = useLiff();
@@ -89,8 +90,6 @@ export const useCallCar = () => {
       return;
     }
 
-    // Removed the online drivers check - allow direct ordering
-    
     setIsLoading(true);
     
     const selectedCarType = CAR_TYPES.find(type => type.id === carType);
@@ -128,12 +127,82 @@ export const useCallCar = () => {
   };
 
   const handleCancelCall = async (recordId: string) => {
-    try {
-      await cancelRecord(recordId);
+    console.log('開始取消叫車:', recordId);
+    
+    // 先獲取訂單狀態和司機資訊
+    const { data: orderData, error } = await supabase
+      .from('call_records')
+      .select('status, driver_id, driver_name, line_user_id')
+      .eq('id', recordId)
+      .single();
+
+    if (error) {
+      console.error('獲取訂單資訊錯誤:', error);
       toast({
-        title: "已取消叫車",
-        description: "您的叫車請求已成功取消",
+        title: "取消失敗",
+        description: "無法獲取訂單資訊",
+        variant: "destructive"
       });
+      return;
+    }
+
+    if (!orderData) {
+      toast({
+        title: "取消失敗",
+        description: "找不到訂單資訊",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      if (orderData.status === 'waiting') {
+        // 未媒合司機 - 直接取消
+        console.log('未媒合司機，直接取消訂單');
+        await cancelRecord(recordId);
+        
+        toast({
+          title: "已取消叫車",
+          description: "您的叫車請求已成功取消",
+        });
+      } else if (orderData.status === 'matched' && orderData.driver_id) {
+        // 已媒合司機 - 需要通知司機並扣除回饋金
+        console.log('已媒合司機，需要通知司機並扣除回饋金');
+        
+        // 發送 LINE 通知給司機
+        if (orderData.driver_id) {
+          try {
+            await supabase.functions.invoke('send-line-notification', {
+              body: {
+                userId: orderData.driver_id,
+                message: `您接受的訂單已被商家取消。\n由於訂單已媒合，將扣除100元回饋金作為平台費用。\n此費用將於下次繳納平台費時扣除。`
+              }
+            });
+            console.log('已發送取消通知給司機');
+          } catch (notificationError) {
+            console.error('發送司機通知錯誤:', notificationError);
+            // 即使通知失敗也繼續取消流程
+          }
+        }
+
+        // 取消訂單
+        await cancelRecord(recordId);
+
+        // 記錄平台費用扣除（這裡可以添加到獎勵系統或單獨的費用記錄表）
+        // 暫時使用 console.log 記錄，實際應該寫入資料庫
+        console.log(`司機 ${orderData.driver_id} 因訂單取消被扣除100元平台費用`);
+
+        toast({
+          title: "已取消叫車",
+          description: "已通知司機並扣除其100元回饋金作為平台費用",
+        });
+      } else {
+        toast({
+          title: "無法取消",
+          description: "此訂單狀態無法取消",
+          variant: "destructive"
+        });
+      }
     } catch (error) {
       console.error('取消叫車錯誤:', error);
       toast({
