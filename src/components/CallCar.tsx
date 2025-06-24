@@ -1,3 +1,4 @@
+
 import { useEffect } from "react";
 import { useCallCar } from "@/hooks/useCallCar";
 import { useCallCarProfile } from "@/hooks/useCallCarProfile";
@@ -68,6 +69,11 @@ const CallCar = () => {
 
   return (
     <div className="space-y-6">
+      <OnlineDriversStatus 
+        onlineDriversCount={onlineDriversCount} 
+        onRefresh={loadOnlineDriversCount} 
+      />
+
       <CallForm
         carType={carType}
         setCarType={setCarType}
@@ -88,10 +94,13 @@ const CallCar = () => {
         onCancelCall={handleCancelCall}
       />
 
-      <OnlineDriversStatus 
-        onlineDriversCount={onlineDriversCount} 
-        onRefresh={loadOnlineDriversCount} 
-      />
+      {callRecords.length > 0 && userProfile && (
+        <CallRecords
+          callRecords={callRecords}
+          userProfile={userProfile}
+          onCancelCall={handleCancelCall}
+        />
+      )}
     </div>
   );
 };
