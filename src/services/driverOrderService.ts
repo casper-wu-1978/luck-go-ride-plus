@@ -106,23 +106,23 @@ export const driverOrderService = {
         orderId,
         driverId,
         driverName: driverProfile.name,
-        driverPhone: driverProfile.phone,
-        vehicleBrand: driverProfile.vehicle_brand,
-        vehicleColor: driverProfile.vehicle_color,
-        plateNumber: driverProfile.plate_number
+        driverPhone: driverProfile.phone, // phone -> driver_phone
+        vehicleBrand: driverProfile.vehicle_brand, // vehicle_brand -> driver_car_brand
+        vehicleColor: driverProfile.vehicle_color, // vehicle_color -> driver_car_color
+        plateNumber: driverProfile.plate_number // plate_number -> driver_plate_number
       });
 
-      // 更新訂單狀態並加入司機資訊（包含車輛資訊）
+      // 更新訂單狀態並加入司機資訊（修正欄位對應）
       const { data: updateResult, error: updateError } = await supabase
         .from('call_records')
         .update({
           status: 'matched',
           driver_id: driverId,
           driver_name: driverProfile.name || '',
-          driver_phone: driverProfile.phone || '',
-          driver_car_brand: driverProfile.vehicle_brand || '',
-          driver_car_color: driverProfile.vehicle_color || '',
-          driver_plate_number: driverProfile.plate_number || '',
+          driver_phone: driverProfile.phone || '', // phone -> driver_phone
+          driver_car_brand: driverProfile.vehicle_brand || '', // vehicle_brand -> driver_car_brand
+          driver_car_color: driverProfile.vehicle_color || '', // vehicle_color -> driver_car_color
+          driver_plate_number: driverProfile.plate_number || '', // plate_number -> driver_plate_number
           accepted_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
