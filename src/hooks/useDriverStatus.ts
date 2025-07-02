@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useLiff } from "@/contexts/LiffContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { DriverProfileService } from "@/services/driverProfileService";
 
 export const useDriverStatus = () => {
   const { profile } = useLiff();
@@ -16,6 +17,8 @@ export const useDriverStatus = () => {
     if (profile?.userId) {
       checkDriverStatus();
       loadMapboxToken();
+      // Ensure driver profile exists with LINE info
+      ensureDriverLineProfile();
     }
   }, [profile?.userId]);
 
@@ -28,6 +31,21 @@ export const useDriverStatus = () => {
       }
     };
   }, []);
+
+  const ensureDriverLineProfile = async () => {
+    if (!profile?.userId || !profile?.displayName) return;
+
+    try {
+      await DriverProfileService.ensureDriverProfileExists(
+        profile.userId,
+        profile.displayName,
+        profile.pictureUrl
+      );
+      console.log('✅ 司機 LINE 資料確認完成');
+    } catch (error) {
+      console.error('❌ 確保司機 LINE 資料時發生錯誤:', error);
+    }
+  };
 
   const checkDriverStatus = async () => {
     if (!profile?.userId) return;
@@ -388,6 +406,15 @@ export const useDriverStatus = () => {
 
     try {
       console.log('🔄 更新司機狀態:', { userId: profile.userId, status });
+
+      // 確保司機資料存在並包含最新的 LINE 資訊
+      if (profile.displayName) {
+        await DriverProfileService.ensureDriverProfileExists(
+          profile.userId,
+          profile.displayName,
+          profile.pictureUrl
+        );
+      }
 
       // 直接嘗試更新，如果不存在則插入
       const { data: updateResult, error: updateError } = await supabase

@@ -98,6 +98,69 @@ export class DriverProfileService {
     };
   }
 
+  // New method to ensure LINE profile info is stored
+  static async ensureDriverProfileExists(lineUserId: string, lineDisplayName: string, linePictureUrl?: string): Promise<void> {
+    console.log('Ensuring driver profile exists for LINE user:', lineUserId);
+    
+    try {
+      // Check if driver profile already exists
+      const existingProfile = await this.loadProfile(lineUserId);
+      
+      if (!existingProfile) {
+        console.log('Creating new driver profile with LINE info');
+        
+        // Create basic driver profile with LINE information
+        const profileData = {
+          line_user_id: lineUserId,
+          driver_id: lineUserId,
+          name: lineDisplayName || '司機',
+          phone: '',
+          email: '',
+          vehicle_type: '',
+          vehicle_brand: '',
+          vehicle_color: '',
+          plate_number: '',
+          license_number: '',
+          status: 'offline',
+          join_date: new Date().toISOString().split('T')[0]
+        };
+
+        const { error } = await supabase
+          .from('driver_profiles')
+          .insert(profileData);
+
+        if (error) {
+          console.error('創建司機資料錯誤:', error);
+          throw error;
+        }
+        
+        console.log('✅ 司機 LINE 資料已儲存到資料庫');
+      } else {
+        // Update existing profile with latest LINE display name if it's different
+        if (existingProfile.name !== lineDisplayName && lineDisplayName) {
+          console.log('Updating driver profile with latest LINE display name');
+          
+          const { error } = await supabase
+            .from('driver_profiles')
+            .update({ 
+              name: lineDisplayName,
+              updated_at: new Date().toISOString()
+            })
+            .eq('line_user_id', lineUserId);
+
+          if (error) {
+            console.error('更新司機 LINE 資訊錯誤:', error);
+          } else {
+            console.log('✅ 司機 LINE 顯示名稱已更新');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('確保司機資料存在時發生錯誤:', error);
+      throw error;
+    }
+  }
+
   private static async checkExistingProfile(lineUserId: string): Promise<boolean> {
     const { data, error } = await supabase
       .from('driver_profiles')

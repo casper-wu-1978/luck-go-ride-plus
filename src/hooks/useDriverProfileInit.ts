@@ -26,13 +26,28 @@ export const useDriverProfileInit = ({
     }
 
     try {
+      console.log('🔍 初始化司機資料，LINE 用戶:', {
+        userId: liffProfile.userId,
+        displayName: liffProfile.displayName,
+        pictureUrl: liffProfile.pictureUrl
+      });
+
+      // First ensure the driver profile exists with LINE info
+      await DriverProfileService.ensureDriverProfileExists(
+        liffProfile.userId, 
+        liffProfile.displayName || '司機',
+        liffProfile.pictureUrl
+      );
+
+      // Then load the profile data
       const data = await DriverProfileService.loadProfile(liffProfile.userId);
 
       if (data) {
+        console.log('✅ 司機資料載入成功:', data);
         setProfile(data);
         setEditProfile(data);
       } else {
-        // 如果資料庫中沒有資料，使用 LIFF 資料初始化
+        // If still no data after ensuring it exists, create default profile
         const driverProfile: DriverProfile = {
           line_user_id: liffProfile.userId,
           name: liffProfile.displayName || "",
