@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { CallRecord, FavoriteCode, FavoriteAddress } from "@/types/callCar";
 
@@ -285,7 +286,6 @@ export const createCallRecord = async (
   };
 };
 
-// ... keep existing code (updateCallRecord function with merchant notifications using merchant channel)
 export const updateCallRecord = async (
   recordId: string,
   status: 'matched' | 'arrived' | 'in_progress' | 'completed' | 'failed' | 'cancelled',
