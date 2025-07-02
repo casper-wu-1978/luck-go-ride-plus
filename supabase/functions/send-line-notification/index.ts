@@ -9,6 +9,7 @@ const corsHeaders = {
 interface LineNotificationRequest {
   userId: string;
   message: string;
+  isDriver?: boolean; // New flag to identify driver messages
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -20,13 +21,27 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     console.log('📥 收到 LINE 通知請求');
     
-    const { userId, message }: LineNotificationRequest = await req.json();
-    console.log('📋 請求內容:', { userId: userId?.substring(0, 10) + '...', messageLength: message?.length });
+    const { userId, message, isDriver = false }: LineNotificationRequest = await req.json();
+    console.log('📋 請求內容:', { 
+      userId: userId?.substring(0, 10) + '...', 
+      messageLength: message?.length,
+      isDriver 
+    });
     
-    const channelAccessToken = Deno.env.get("LINE_CHANNEL_ACCESS_TOKEN");
+    // Use different channel access tokens for drivers vs merchants
+    let channelAccessToken;
+    if (isDriver) {
+      // Use your driver channel token
+      channelAccessToken = "HiFVVfPZFM/6/AABxLKY2kSu0ZMyzZIrCTXN4R09tOkvliNnkpQrXHMnrQBxErMNb+aIioMa+dkC4xvbtRGl6p5rzxenoJdnY3SWqwme4wk7XBgciZRR8GGOvZTTysEAfe3NqkAt3GNqclcZQ1rQkgdB04t89/1O/w1cDnyilFU=";
+      console.log('📱 使用司機頻道發送訊息');
+    } else {
+      // Use the original channel token for merchants
+      channelAccessToken = Deno.env.get("LINE_CHANNEL_ACCESS_TOKEN");
+      console.log('📱 使用商家頻道發送訊息');
+    }
     
     if (!channelAccessToken) {
-      console.error("❌ LINE_CHANNEL_ACCESS_TOKEN 未設定");
+      console.error("❌ LINE Channel Access Token 未設定");
       return new Response(
         JSON.stringify({ error: "LINE Channel Access Token not configured" }),
         { 
@@ -61,6 +76,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log('🚀 準備發送 LINE 推播...');
     console.log('📱 目標用戶:', userId);
     console.log('💬 訊息長度:', message.length);
+    console.log('🎯 頻道類型:', isDriver ? '司機頻道' : '商家頻道');
 
     // Send push message to LINE user
     const lineResponse = await fetch("https://api.line.me/v2/bot/message/push", {

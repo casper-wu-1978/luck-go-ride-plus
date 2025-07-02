@@ -3,7 +3,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLiff } from "@/contexts/LiffContext";
 import { supabase } from "@/integrations/supabase/client";
 import { driverOrderService } from "@/services/driverOrderService";
-import { updateCallRecord } from "@/utils/callCarApi";
+import { updateCallRecord, sendLineNotification } from "@/utils/callCarApi";
 import type { OrderCompletionData } from "@/types/driverOrders";
 
 export const useDriverOrderActions = (onOrdersChanged: () => void) => {
@@ -165,7 +165,15 @@ export const useDriverOrderActions = (onOrdersChanged: () => void) => {
       // 先通過 driverOrderService 取消訂單（會將狀態改回 waiting）
       await driverOrderService.cancelOrder(orderId, profile.userId);
       
-      // 不發送 LINE 通知，因為訂單回到待媒合狀態，讓其他司機可以接單
+      // 發送通知給司機本人 - 使用司機頻道
+      try {
+        const cancelMessage = `⚠️ 訂單已取消\n\n您取消了一筆訂單，該訂單已重新開放給其他司機接單。\n\n如有疑問請聯繫客服。`;
+        await sendLineNotification(profile.userId, cancelMessage, true); // isDriver: true
+        console.log('✅ 已發送取消通知給司機');
+      } catch (notificationError) {
+        console.error('❌ 發送司機取消通知錯誤:', notificationError);
+        // 不影響主要取消流程
+      }
       
       toast({
         title: "已取消訂單",

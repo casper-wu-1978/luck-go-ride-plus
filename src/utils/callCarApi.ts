@@ -125,18 +125,20 @@ const getOnlineDrivers = async () => {
   }
 };
 
-// 發送LINE通知的核心函數 - 改善錯誤處理
-export const sendLineNotification = async (lineUserId: string, message: string) => {
+// 發送LINE通知的核心函數 - 支持司機和商家頻道
+export const sendLineNotification = async (lineUserId: string, message: string, isDriver: boolean = false) => {
   try {
-    console.log(`📤 準備發送 LINE 通知給用戶:`, {
+    console.log(`📤 準備發送 LINE 通知給${isDriver ? '司機' : '商家'}:`, {
       userId: lineUserId?.substring(0, 10) + '...',
-      messageLength: message.length
+      messageLength: message.length,
+      channelType: isDriver ? '司機頻道' : '商家頻道'
     });
     
     const { data, error } = await supabase.functions.invoke('send-line-notification', {
       body: {
         userId: lineUserId,
-        message: message
+        message: message,
+        isDriver: isDriver
       }
     });
 
@@ -153,7 +155,7 @@ export const sendLineNotification = async (lineUserId: string, message: string) 
   }
 };
 
-// 群發通知所有線上司機 - 改善錯誤處理和日誌
+// 群發通知所有線上司機 - 使用司機頻道
 const notifyAllOnlineDrivers = async (orderData: any) => {
   try {
     console.log('🚨 開始群發新訂單通知給所有線上司機:', {
@@ -176,9 +178,9 @@ const notifyAllOnlineDrivers = async (orderData: any) => {
       orderData.favorite_type === 'address' ? 
       `地址: ${orderData.favorite_info}` : '現在位置';
     
-    const lineMessage = `🚕 新訂單通知！\n\n車型：${orderData.car_type_label}\n上車位置：${location}\n\n請儘快查看並接單！`;
+    const lineMessage = `🚕 新訂單通知！\n\n車型：${orderData.car_type_label}\n上車位置：${location}\n\n請移至司機端查看並接單！`;
 
-    // 發送通知給所有線上司機
+    // 發送通知給所有線上司機 - 使用司機頻道
     let successCount = 0;
     let errorCount = 0;
     
@@ -188,7 +190,8 @@ const notifyAllOnlineDrivers = async (orderData: any) => {
           lineUserId: driver.line_user_id?.substring(0, 10) + '...'
         });
         
-        await sendLineNotification(driver.line_user_id, lineMessage);
+        // 使用 isDriver: true 來發送給司機頻道
+        await sendLineNotification(driver.line_user_id, lineMessage, true);
         console.log(`✅ 成功通知司機 ${driver.name}`);
         successCount++;
         
@@ -242,16 +245,16 @@ export const createCallRecord = async (
 
   console.log('✅ 叫車記錄建立成功:', newRecord.id);
 
-  // 1. 發送叫車確認通知給商家
+  // 1. 發送叫車確認通知給商家（使用商家頻道）
   try {
     const location = favoriteType === 'code' ? `代碼: ${favoriteInfo}` : 
                     favoriteType === 'address' ? `地址: ${favoriteInfo}` : '現在位置';
     
     const confirmationMessage = `🚕 叫車請求已送出！\n\n車型：${carTypeLabel}\n上車位置：${location}\n狀態：等待司機接單\n\n請耐心等候，我們會在司機接單時立即通知您。`;
     
-    // 只發送給有效的商家ID
+    // 只發送給有效的商家ID（使用商家頻道）
     if (lineUserId && lineUserId.startsWith('U') && lineUserId.length >= 30 && !lineUserId.includes('12345') && !lineUserId.includes('test')) {
-      await sendLineNotification(lineUserId, confirmationMessage);
+      await sendLineNotification(lineUserId, confirmationMessage, false); // isDriver: false
       console.log('✅ 已發送叫車確認通知給商家');
     } else {
       console.log('⚠️ 跳過發送給無效商家ID:', lineUserId);
@@ -261,7 +264,7 @@ export const createCallRecord = async (
     // 不拋出錯誤，繼續執行
   }
 
-  // 2. 群發通知所有線上司機新訂單
+  // 2. 群發通知所有線上司機新訂單（使用司機頻道）
   try {
     console.log('🚨 開始群發新訂單通知給所有線上司機...');
     await notifyAllOnlineDrivers(newRecord);
@@ -282,7 +285,7 @@ export const createCallRecord = async (
   };
 };
 
-// ... keep existing code (updateCallRecord function unchanged)
+// ... keep existing code (updateCallRecord function with merchant notifications using merchant channel)
 export const updateCallRecord = async (
   recordId: string,
   status: 'matched' | 'arrived' | 'in_progress' | 'completed' | 'failed' | 'cancelled',
@@ -311,7 +314,7 @@ export const updateCallRecord = async (
     throw error;
   }
 
-  // 根據不同狀態發送相應的 LINE 通知給商家
+  // 根據不同狀態發送相應的 LINE 通知給商家（使用商家頻道）
   if (lineUserId) {
     try {
       let message = '';
@@ -345,7 +348,8 @@ export const updateCallRecord = async (
       }
 
       if (message) {
-        await sendLineNotification(lineUserId, message);
+        // 發送給商家使用商家頻道 (isDriver: false)
+        await sendLineNotification(lineUserId, message, false);
         console.log(`✅ 已發送 ${status} 狀態通知給商家`);
       }
     } catch (notificationError) {
